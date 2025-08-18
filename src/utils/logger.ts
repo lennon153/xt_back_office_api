@@ -1,13 +1,20 @@
-export const log = {
-  info: (...args: unknown[]) =>
-    console.log("\x1b[32m[INFO]\x1b[0m", ...args), // Green
+// src/utils/logger.ts
+import winston from "winston";
 
-  warn: (...args: unknown[]) =>
-    console.warn("\x1b[33m[WARN]\x1b[0m", ...args), // Yellow
+const { combine, timestamp, colorize, printf } = winston.format;
 
-  error: (...args: unknown[]) =>
-    console.error("\x1b[31m[ERROR]\x1b[0m", ...args), // Red
+const logFormat = printf(({ level, message, timestamp }) => {
+  return `[${timestamp}] ${level}: ${message}`;
+});
 
-  debug: (...args: unknown[]) =>
-    console.debug("\x1b[36m[DEBUG]\x1b[0m", ...args), // Cyan
-};
+export const logger = winston.createLogger({
+  level: "info", // default level
+  format: combine(
+    colorize(), // adds colors to level (info, error, warn)
+    timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+    logFormat
+  ),
+  transports: [
+    new winston.transports.Console()
+  ],
+});

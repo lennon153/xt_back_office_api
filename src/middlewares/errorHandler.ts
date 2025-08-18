@@ -1,12 +1,31 @@
+// src/middleware/errorHandler.ts
 import { Request, Response, NextFunction } from "express";
-import { log } from "../utils/logger";
+import { ZodError } from "zod";
+import { CustomError } from "../utils/customError";
 
 export const errorHandler = (
-  err: any,
-  req: Request,
+  err: unknown,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
-  log.error(err.message || err);
-  res.status(err.status || 500).json({ message: err.message || "Internal Server Error" });
+  if (err instanceof ZodError) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation Error",
+      errors: err.issues.map(e => ({ path: e.path, message: e.message })),
+    });
+  }
+
+  if (err instanceof CustomError) {
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.message,
+    });
+  }
+
+  return res.status(500).json({
+    success: false,
+    message: "Internal Server Error",
+  });
 };

@@ -6,6 +6,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
+    "start": "node dist/server.js",
     "migrate:create": "ts-node ./scripts/createMigration.ts",
     "migrate": "ts-node ./scripts/migrate.ts"
   },
@@ -16,12 +17,14 @@
   "dependencies": {
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "winston": "^3.17.0",
     "zod": "^4.0.17"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/inquirer": "^9.0.9",
     "@types/node": "^24.3.0",
+    "@types/winston": "^2.4.4",
     "commander": "^14.0.0",
     "inquirer": "^12.9.2",
     "mysql2": "^3.14.3",

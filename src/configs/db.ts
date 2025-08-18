@@ -1,6 +1,6 @@
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
-import { log } from "../utils/logger";
+import { logger } from "../utils/logger";
 
 dotenv.config();
 
@@ -52,9 +52,9 @@ async function testConnection() {
   try {
     connection = await db.getConnection();
     await connection.ping();
-    log.info("✅ Database connected successfully");
+    logger.info("✅ Database connected successfully");
   } catch (err) {
-    log.error("❌ Database connection failed:", err instanceof Error ? err.message : err);
+    logger.error("❌ Database connection failed:", err instanceof Error ? err.message : err);
     throw err; // Re-throw to allow application to handle
   } finally {
     if (connection) await connection.release();
@@ -71,9 +71,9 @@ testConnection().catch(() => {
 process.on('SIGINT', async () => {
   try {
     await db.end();
-    log.info("Database pool closed gracefully");
+    logger.info("Database pool closed gracefully");
   } catch (err) {
-    log.error("Error closing database pool:", err instanceof Error ? err.message : err);
+    logger.error("Error closing database pool:", err instanceof Error ? err.message : err);
   } finally {
     process.exit(0);
   }

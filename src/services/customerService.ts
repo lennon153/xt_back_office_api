@@ -1,26 +1,40 @@
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { db } from "../configs/db";
-import { Customer, PaginatedCustomers } from "../types/Customer";
-import { generateId } from "../utils/generateId";
+import { Customer, PaginatedCustomers } from "../types/customer";
 
-export const createCustomer = async (customer: Customer) =>{
+export const createCustomer = async (customer: Customer) => {
+    const connection = await db.getConnection(); // get a transaction connection
+    try {
+        await connection.beginTransaction();
 
-  const [result]: any = await db.query(
-    `INSERT INTO tbl_customers (full_name, username, phone, email, types) 
-     VALUES (?, ?, ?, ?, ?)`,
-    [customer.full_name, customer.username, customer.phone, customer.email, customer.types]
-  );
+        // Insert new customer
+        const [result]: any = await connection.query(
+            `INSERT INTO tbl_customers (full_name, username, phone, email, types) 
+             VALUES (?, ?, ?, ?, ?)`,
+            [customer.full_name, customer.username, customer.phone, customer.email, customer.types]
+        );
 
-  // Auto increment ID from DB
-  const customerId = `CUST${String(result.insertId).padStart(3, "0")}`;
+        // Generate customer_id
+        const customerId = `CUST${String(result.insertId).padStart(3, "0")}`;
 
-  // Update row with generated customer_id
-  await db.query(
-    `UPDATE tbl_customers SET customer_id = ? WHERE id = ?`,
-    [customerId, result.insertId]
-  );
+        // Update row with generated customer_id
+        await connection.query(
+            `UPDATE tbl_customers SET customer_id = ? WHERE id = ?`,
+            [customerId, result.insertId]
+        );
 
-  return { id: result.insertId, customerId };
+        // Commit transaction
+        await connection.commit();
+
+        return { id: result.insertId, customerId };
+
+    } catch (err) {
+        // Rollback if any error occurs
+        await connection.rollback();
+        throw err; // throw to be handled by controller
+    } finally {
+        connection.release();
+    }
 };
 
 export const getCustomerById = async (id: number): Promise<Customer | null> => {
@@ -75,9 +89,9 @@ export const getAllCustomers = async (
     
     // Add search condition if provided
     if (search) {
-        baseQuery += ` WHERE full_name LIKE ? OR username LIKE ? OR email LIKE ? OR phone LIKE ?`;
+        baseQuery += ` WHERE full_name LIKE ? OR username LIKE ? OR email LIKE ? OR phone LIKE ? OR customer_id LIKE ?`;
         const searchParam = `%${search}%`;
-        queryParams.push(searchParam, searchParam, searchParam, searchParam);
+        queryParams.push(searchParam, searchParam, searchParam, searchParam, searchParam);
     }
     
     try {

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { customerSchema } from "../validators/customer.schema";
-import { Customer } from "../types/Customer";
+import { Customer } from "../types/customer";
 import { createCustomer, deleteCustomer, getAllCustomers, getCustomerById, updateCustomer } from "../services/customerService";
 import { ZodError } from "zod";
 
@@ -26,12 +26,14 @@ export const getCustomerByIdController = async (req: Request, res: Response) => 
       return res.status(400).json({ message: "Customer ID is required" });
     }
 
-    const id = parseInt(idParam, 10);
-    if (isNaN(id)) {
+    // Strict numeric check
+    if (!/^\d+$/.test(idParam)) {
       return res.status(400).json({ message: "Invalid customer ID" });
     }
 
+    const id = parseInt(idParam, 10);
     const customer = await getCustomerById(id);
+
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
     }
@@ -41,6 +43,7 @@ export const getCustomerByIdController = async (req: Request, res: Response) => 
     res.status(500).json({ message: err.message });
   }
 };
+
 
 export const updateCustomerController = async (req: Request, res: Response) => {
   try {

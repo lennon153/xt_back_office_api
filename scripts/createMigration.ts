@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
-import { log } from "../src/utils/logger";
+import { logger } from "../src/utils/logger";
 
 dotenv.config();
 
@@ -45,4 +45,4 @@ switch (type) {
 }
 
 fs.writeFileSync(filePath, template);
-log.info(`✅ Migration file created: ${filePath}`);
+logger.info(`✅ Migration file created: ${filePath}`);

@@ -1,8 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { Pool, RowDataPacket } from "mysql2/promise";
-import { db } from "../configs/db";
-import { log } from "./logger";
+import { logger } from "./logger";
 
 interface MigrationRecord extends RowDataPacket {
   id: number;
@@ -21,7 +20,7 @@ export class MigrationRunner {
     await this.createMigrationsTable();
     const appliedMigrations = await this.getAppliedMigrations();
     await this.executeNewMigrations(appliedMigrations);
-    log.info("✅ All migrations applied successfully!");
+    logger.info("✅ All migrations applied successfully!");
   }
 
   private async createMigrationsTable() {
@@ -44,7 +43,7 @@ export class MigrationRunner {
 
     for (const file of files) {
       if (appliedNames.includes(file)) {
-        log.info(`⏭ Already applied: ${file}`);
+        logger.info(`⏭ Already applied: ${file}`);
         continue;
       }
       await this.executeMigration(file);
@@ -60,7 +59,7 @@ export class MigrationRunner {
       await connection.query(sql);
       await connection.query("INSERT INTO migrations (name) VALUES (?)", [filename]);
       await connection.commit();
-      log.info(`✅ Applied: ${filename}`);
+      logger.info(`✅ Applied: ${filename}`);
     } catch (err) {
       await connection.rollback();
       throw err;
