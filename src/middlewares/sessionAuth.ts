@@ -1,6 +1,5 @@
 import { Request, Response , NextFunction } from "express";
 import { db } from "../configs/db";
-import { log } from "console";
 
 export interface SessionRequest extends Request {
     userId? : string;

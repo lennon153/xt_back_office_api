@@ -10,3 +10,15 @@ export interface Customer {
   created_at?: string;
   updated_at?: string;
 }
+
+export interface PaginatedCustomers {
+    data: Customer[];
+    pagination: {
+        total: number;
+        totalPages: number;
+        currentPage: number;
+        limit: number;
+        hasNext: boolean;
+        hasPrevious: boolean;
+    };
+}

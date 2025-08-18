@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { customerSchema } from "../validators/customer.schema";
 import { Customer } from "../types/Customer";
-import { createCustomer, deleteCustomer, getCustomerById, updateCustomer } from "../services/customerService";
+import { createCustomer, deleteCustomer, getAllCustomers, getCustomerById, updateCustomer } from "../services/customerService";
 import { ZodError } from "zod";
 
 export const createCustomerController = async (req: Request, res: Response) =>{
@@ -87,4 +87,19 @@ export const deleteCustomerController = async (req: Request, res: Response) => {
   } catch (err: any) {
     res.status(500).json({ message: err.message });
   }
+};
+
+export const getCustomers = async (req: Request, res: Response) => {
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        const search = req.query.search as string || '';
+        
+        const result = await getAllCustomers(page, limit, search);
+        
+        res.json(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error while fetching customers' });
+    }
 };
