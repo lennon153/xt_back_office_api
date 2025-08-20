@@ -37,4 +37,11 @@ export class CustomError extends Error {
   }
 }
 
+export const notFoundHandler = (req: Request, res: Response, next: NextFunction) => {
+  res.status(404).json({
+    success: false,
+    message: `API not found - ${req.originalUrl}`,
+  });
+};
+
 export { AppError };

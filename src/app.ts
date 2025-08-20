@@ -1,5 +1,5 @@
 import express from "express";
-import { errorHandler } from "./middlewares/errorHandler";
+import { errorHandler, notFoundHandler } from "./middlewares/errorHandler";
 import { requestLogger } from "./middlewares/requestLogger";
 import { notFound } from "./middlewares/notFound";
 import { AutoScheduler } from "./utils/autoScheduler";
@@ -23,7 +23,7 @@ app.use(requestLogger);
 app.use("/api/v1", routes);
 
 // Global 404 handler (must be after all routes)
-app.use(notFound);
+
 
 // Every minute task example
 // const minuteTask = new AutoScheduler(
@@ -40,5 +40,7 @@ app.use(notFound);
 
 // Global error handler (must be last)
 app.use(errorHandler);
+app.use(notFoundHandler);
+app.use(notFound);
 
 export default app;

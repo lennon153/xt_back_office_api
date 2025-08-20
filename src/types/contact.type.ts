@@ -7,6 +7,7 @@ export interface Contact{
   contact_type: 'lead' | 'customer';
   register_date: Date | null;
   last_call_at: Date | null;
+  dob: Date | null;
   last_call_status: 
     | 'no_answer'
     | 'connected_declined'
@@ -17,9 +18,9 @@ export interface Contact{
     | null;
   personal_note: string | null;
   contact_line: string | null;
-  created_at: Date;
-  updated_at: Date | null;
-  deleted_at: Date | null;
+  create_at: Date;
+  update_at: Date | null;
+  delete_at: Date | null;
 }
 
 // For creating new contacts where some fields are optional
@@ -28,7 +29,19 @@ export interface ContactCreate {
   full_name?: string | null;
   contact_type?: 'lead' | 'customer';
   register_date?: Date | null;
-  // ... other optional fields for creation
+  last_call_at: Date;
+  last_call_status:
+  | 'no_anser' 
+  | 'connected_declined' 
+  | 'callback'
+  | 'wrong_number' 
+  | 'blocked' 
+  | 'success';
+  personal_note: string | null;
+  contact_line: string | null;
+  create_at: Date;
+  update_at: Date | null
+  dob : Date | null;
 }
 
 // For updating contacts where most fields are optional
@@ -48,10 +61,11 @@ export interface ContactUpdate {
   personal_note?: string | null;
   contact_line?: string | null;
   deleted_at?: Date | null;
+  dob?: Date | null; // ✅ mark as optional
 }
 
 export interface PaginatedContacts {
-    data: Contact[];
+    contacts: Contact[];
     pagination: {
         total: number;
         totalPages: number;

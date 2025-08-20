@@ -1,7 +1,11 @@
 import { AppError } from "../utils/customError";
 import { HttpStatus } from "../constants/httpStatus";
-import { getAllContactsRepository, getContactDetailByIdRepository } from "../repository/contact.repository";
+import { createContactRepository, deleteContactRepository, getAllContactsRepository, getContactDetailByIdRepository, updateContactRepository } from "../repository/contact.repository";
 import { formatDateHour } from "../utils/dateFormat";
+import { ContactCreate } from "../types/contact.type";
+import fs from "fs";
+import { parse } from "csv-parse";
+
 
 
 export const getAllContactsService = async (
@@ -17,19 +21,20 @@ export const getAllContactsService = async (
     const hasPrevious = page > 1;
 
     return {
-      data: rows.map((row: any) => ({
+      contacts: rows.map((row: any) => ({
         id: row.id,
         contact_id: row.contact_id,
         tel: row.tel,
         full_name: row.full_name,
+        dob: row.dob ? formatDateHour(new Date(row.dob)): null,
         contact_type: row.contact_type,
         register_date: row.register_date ? formatDateHour(new Date(row.register_date)): null,
         last_call_at: row.last_call_at ? formatDateHour(new Date(row.last_call_at)): null,
         last_call_status: row.last_call_status,
         contact_line: row.contact_line,
         personal_note:row.personal_note,
-        created_at: row.created_at ? formatDateHour(new Date(row.created_at)) : null,
-        updated_at: row.updated_at ? formatDateHour(new Date(row.updated_at)) : null,
+        created_at: row.create_at ? formatDateHour(new Date(row.create_at)) : null,
+        updated_at: row.update_at ? formatDateHour(new Date(row.update_at)) : null,
       })),
       pagination: {
         total,
@@ -110,4 +115,57 @@ export const getContactDetailService = async (contactId: number) => {
   contact.usernames = Array.from(usernameMap.values());
 
   return contact;
+};
+
+export const createContactService = async (contact: ContactCreate) => {
+  const now = new Date();
+
+  // Merge automatic timestamps
+  const contactWithTimestamps: ContactCreate = {
+    ...contact,
+    create_at: now,
+    update_at: now,
+  };
+
+  const newContact = await createContactRepository(contactWithTimestamps);
+  return newContact;
+};
+
+export const updateContactService = async (id: number, contact: Partial<ContactCreate>) =>{
+  const now = new Date();
+  return updateContactRepository(id, {...contact, update_at: now});
+}
+
+export const deleteContactService = async (id: number) =>{
+  return deleteContactRepository(id);
+}
+
+export const uploadContactsCsvService = async (filePath: string) => {
+  const contacts: ContactCreate[] = [];
+  const parser = fs.createReadStream(filePath).pipe(parse({ columns: true, skip_empty_lines: true }));
+
+  for await (const row of parser) {
+    const contact: ContactCreate = {
+      tel: row.tel || null,
+      full_name: row.full_name || null,
+      contact_type: (row.contact_type as "lead" | "customer") || "lead",
+      register_date: row.register_date ? new Date(row.register_date) : null,
+      last_call_at: row.last_call_at ? new Date(row.last_call_at) : new Date(),
+      last_call_status: row.last_call_status as any,
+      personal_note: row.personal_note || null,
+      contact_line: row.contact_line || null,
+      create_at: new Date(),
+      update_at: new Date(),
+      dob: row.dob ? new Date(row.dob) : null,
+    };
+    contacts.push(contact);
+  }
+
+  const createdContacts = [];
+  for (const c of contacts) {
+    const newContact = await createContactRepository(c);
+    createdContacts.push(newContact);
+  }
+
+  return createdContacts;
 };

@@ -3,6 +3,7 @@ import { Router } from "express";
 import customerRoute from "./customer.routes";
 import staffLevelRoute from "./staffLevel.route";
 import contactRoute from "./contact.routes";
+import caseRoute from "./case.route";
 
 const router = Router();
 
@@ -10,5 +11,6 @@ const router = Router();
 router.use("/customers", customerRoute);
 router.use("/staff-level", staffLevelRoute);
 router.use("/contacts", contactRoute);
+router.use("/cases", caseRoute)
 
 export default router;

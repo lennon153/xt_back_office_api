@@ -1,4 +1,6 @@
+import { ResultSetHeader } from "mysql2";
 import {db} from "../configs/db";
+import { ContactCreate } from "../types/contact.type";
 
 export const getAllContactsRepository = async (
   page: number = 1,
@@ -24,7 +26,7 @@ export const getAllContactsRepository = async (
 
   // Get paginated data
   const [rows]: any = await db.query(
-    `SELECT * ${baseQuery} ORDER BY create_at DESC LIMIT ? OFFSET ?`,
+    `SELECT * ${baseQuery} ORDER BY contact_id DESC LIMIT ? OFFSET ?`,
     [...queryParams, limit, offset]
   );
 
@@ -80,4 +82,62 @@ export const getContactDetailByIdRepository = async (contactId: number) => {
   );
 
   return rows;
+};
+
+export const createContactRepository = async (contact: ContactCreate) => {
+  const [result] = await db.query<ResultSetHeader>(
+    `INSERT INTO contacts 
+     (tel, full_name, contact_type, register_date, last_call_at, dob, last_call_status, personal_note, contact_line, create_at, update_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      contact.tel,
+      contact.full_name,
+      contact.contact_type,
+      contact.register_date,
+      contact.last_call_at,
+      contact.dob,
+      contact.last_call_status,
+      contact.personal_note,
+      contact.contact_line,
+      contact.create_at,
+      contact.update_at,
+    ]
+  );
+
+  return { id: result.insertId, ...contact };
+};
+
+// UPDATE
+export const updateContactRepository = async (id: number, contact: Partial<ContactCreate>) => {
+  const fields = Object.keys(contact);
+  if (fields.length === 0) return null;
+
+  const values = Object.values(contact).map(val => {
+    if (val instanceof Date) return val; // already Date object
+
+    // convert ISO string to MySQL datetime format
+    if (typeof val === "string" && !isNaN(Date.parse(val))) {
+      return new Date(val).toISOString().slice(0, 19).replace("T", " ");
+    }
+    return val;
+  });
+
+  const setClause = fields.map(f => `${f} = ?`).join(", ");
+
+  const [result] = await db.query<ResultSetHeader>(
+    `UPDATE contacts SET ${setClause} WHERE contact_id = ?`,
+    [...values, id]
+  );
+
+  return result.affectedRows > 0;
+};
+;
+
+// DELETE
+export const deleteContactRepository = async (id: number) => {
+  const [result] = await db.query<ResultSetHeader>(
+    `DELETE FROM contacts WHERE contact_id = ?`,
+    [id]
+  );
+  return result.affectedRows > 0;
 };
