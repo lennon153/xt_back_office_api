@@ -1,5 +1,5 @@
 import { db } from "../configs/db";
-import { PaginationOptions, PaginationResult } from "../types/pagination";
+import { PaginationOptions, PaginationResult } from "../types/pagination.type";
 
 export async function paginate<T>(
     tableName: string,

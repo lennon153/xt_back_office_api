@@ -1,31 +1,40 @@
 // src/middleware/errorHandler.ts
 import { Request, Response, NextFunction } from "express";
-import { ZodError } from "zod";
-import { CustomError } from "../utils/customError";
+import { AppError } from "../utils/customError";
+import { HttpStatus } from "../constants/httpStatus";
+
 
 export const errorHandler = (
-  err: unknown,
-  _req: Request,
+  err: Error,
+  req: Request,
   res: Response,
-  _next: NextFunction
+  next: NextFunction
 ) => {
-  if (err instanceof ZodError) {
-    return res.status(400).json({
-      success: false,
-      message: "Validation Error",
-      errors: err.issues.map(e => ({ path: e.path, message: e.message })),
-    });
-  }
-
-  if (err instanceof CustomError) {
+  if (err instanceof AppError) {
     return res.status(err.statusCode).json({
       success: false,
       message: err.message,
     });
   }
 
-  return res.status(500).json({
+  console.error("Unexpected error:", err);
+
+  res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
     success: false,
-    message: "Internal Server Error",
+    message: "Internal server error",
   });
+
+  
 };
+
+// Custom error class example
+export class CustomError extends Error {
+  constructor(
+    public message: string,
+    public statusCode: number = 400
+  ) {
+    super(message);
+  }
+}
+
+export { AppError };

@@ -1,10 +1,22 @@
-// src/utils/CustomError.ts
-export class CustomError extends Error {
-  statusCode: number;
+import { HttpStatusCode } from "../constants/httpStatus";
 
-  constructor(message: string, statusCode: number = 500) {
+// src/utils/CustomError.ts
+export class AppError extends Error {
+  public readonly statusCode: HttpStatusCode;
+  public readonly isOperational: boolean;
+
+  constructor(
+    message: string,
+    statusCode: HttpStatusCode,
+    isOperational = true
+  ) {
     super(message);
+
+    Object.setPrototypeOf(this, new.target.prototype);
+
     this.statusCode = statusCode;
-    Error.captureStackTrace(this, this.constructor);
+    this.isOperational = isOperational;
+
+    Error.captureStackTrace(this);
   }
 }
