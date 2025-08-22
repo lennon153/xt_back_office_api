@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createCaseController, deleteCaseController, getAllCasesController, updateCaseController } from "../controllers/case.controller";
+import { createCaseController, deleteCaseController,  getAllCasesController, updateCaseController } from "../controllers/case.controller";
 
 
 const caseRoute = Router();

@@ -10,6 +10,12 @@ export interface Case {
     update_at: Date;
 }
 
+export interface CaseResponse extends Omit<Case, "create_at" | "update_at"> {
+  create_at: string | null;
+  update_at: string | null;
+}
+
+
 export interface PaginatedCase{
     cases: Case[];
     pagination:{

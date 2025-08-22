@@ -1,8 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { ApiResponse } from "../types/api.type";
-import { PaginatedCase } from "../types/case.type";
-import { HttpStatus } from "../constants/httpStatus";
-import { createCaseService, deleteCaseService, getAllCasesService, updateCaseService } from "../services/case.service";
+import { createCaseService, deleteCaseService,  getAllCasesService, updateCaseService } from "../services/case.service";
 import { createCaseSchema, updateCaseSchema } from "../validators/case.schema";
 
 
@@ -30,36 +28,44 @@ export const createCaseController = async (req: Request, res: Response, next: Ne
 };
 
 
+export const getAllCasesController = async (
+  req: Request,
+  res: Response<ApiResponse<any>>,
+  next: NextFunction
+) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = req.query.search as string | undefined;
+    const status = req.query.status as string | undefined;
+    const priority = req.query.priority as string | undefined;
+    const sortBy = (req.query.sortBy as string) || "create_at";
+    const sortOrder = (req.query.sortOrder as "ASC" | "DESC") || "DESC";
 
-export const getAllCasesController = async(
-    req:Request<{}, {} ,{}, { page?:string; limit?:string; search?: string}>,
-    res:Response<ApiResponse<PaginatedCase>>,
-    next:NextFunction
-) =>{
-    try{
-        const page = parseInt(req.query.page || "1", 10);
-        const limit = parseInt(req.query.limit || "10", 10);
-        const search = req.query.search || "";
+    const result = await getAllCasesService({
+      page,
+      limit,
+      search,
+      filters: {
+        ...(status && { case_status: status }),
+        ...(priority && { priority }),
+      },
+      sortBy,
+      sortOrder,
+    });
 
-        if(page <= 0|| limit <= 0){
-            return res.status(HttpStatus.BAD_REQUEST).json({
-                success: false,
-                message:"Page and limit must be positive integers."
-            });
-        }
-
-        const result = await getAllCasesService(page, limit, search);
-
-        return res.json({
-            success: true,
-            message: "Cases fetched successfully",
-            data: result,
-        })
-    } catch (err : any){
-        console.error("Error fetching cases:",err)
-        next(err);
-    }
-}
+    return res.json({
+      success: true,
+      message: "Cases retrieved successfully",
+      data: {
+        cases :result.data
+      }, 
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const updateCaseController = async (
   req: Request<{ id: string }>,

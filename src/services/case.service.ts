@@ -1,9 +1,10 @@
 import ca from "zod/v4/locales/ca.js";
 import { HttpStatus } from "../constants/httpStatus";
-import { createCaseRepository, deleteCaseRepository, getAllCasesRepository, updateCaseRepository } from "../repository/case.repository"
-import { CreateCase, UpdateCase } from "../types/case.type";
+import { createCaseRepository, deleteCaseRepository, getCasesRepository, updateCaseRepository } from "../repository/case.repository"
+import { CaseResponse, CreateCase, UpdateCase } from "../types/case.type";
 import { AppError } from "../utils/customError";
 import { formatDateHour } from "../utils/dateFormat";
+import { PaginateOptions, PaginationResult } from "../types/pagination.type";
 
 
 export const createCaseService = async (
@@ -21,43 +22,24 @@ export const createCaseService = async (
   return createdCase;
 };
 
-export const getAllCasesService = async (
-    page: number = 1,
-    limit: number = 10,
-    search: string = ''
-) =>{
-    try{
-        const {rows , total } = await getAllCasesRepository(page, limit, search);
 
-        const totalPage = Math.ceil(total / limit);
-        const hasNext = page < totalPage;
-        const hasPrevious = page>1
 
-        return{
-            cases: rows.map((row: any)=>({
-                case_id: row.case_id,
-                contact_id: row.contact_id,
-                username_id: row.username_id,
-                case_type: row.case_type,
-                case_description: row.case_description,
-                case_status:row.case_status,
-                priority: row.priority,
-                create_at: row.create_at ? formatDateHour(new Date(row.create_at)): null,
-                update_at: row.update_at ? formatDateHour(new Date(row.update_at)): null
-            })),
-            pagination:{
-                total,
-                totalPage,
-                currentPage: page,
-                limit,
-                hasNext,
-                hasPrevious
-            },
-        };
-    } catch(e){
-        console.log("Error fetching cases:",e);
-        throw new AppError("Cases not found",HttpStatus.NOT_FOUND);
-    }
+
+export async function getAllCasesService(
+  options: PaginateOptions
+): Promise<PaginationResult<CaseResponse>> {
+  const result = await getCasesRepository(options);
+
+  const formattedData = result.data.map((c) => ({
+    ...c,
+    create_at: c.create_at ? formatDateHour(new Date(c.create_at)) : null,
+    update_at: c.update_at ? formatDateHour(new Date(c.update_at)) : null,
+  }));
+
+  return {
+    ...result,
+    data: formattedData,
+  };
 }
 
 export const updateCaseService = async (

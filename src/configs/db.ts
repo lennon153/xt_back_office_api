@@ -64,7 +64,7 @@ async function testConnection() {
 // Test connection on startup
 testConnection().catch(() => {
   // Application can decide whether to exit or retry
-  // process.exit(1); // Uncomment if you want to exit on failure
+  process.exit(1); // Uncomment if you want to exit on failure
 });
 
 // Graceful shutdown

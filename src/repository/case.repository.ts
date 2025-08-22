@@ -1,5 +1,7 @@
 import { db } from "../configs/db";
-import { CreateCase, UpdateCase } from "../types/case.type";
+import { Case, CreateCase, UpdateCase } from "../types/case.type";
+import { PaginateOptions, PaginationOptions, PaginationResult } from "../types/pagination.type";
+import { paginate } from "../utils/pagination";
 
 export const createCaseRepository = async (newCase: CreateCase) => {
   const [result]: any = await db.query(
@@ -24,38 +26,14 @@ export const createCaseRepository = async (newCase: CreateCase) => {
   };
 };
 
-export const getAllCasesRepository = async (
-    page: number = 1,
-    limit: number = 10,
-    search: string = ''
-) => {
-    const offset = (page - 1) * limit;
-
-    let baseQuery = `FROM cases `;
-    const queryParams: any[] = [];
-
-    if (search) {
-        baseQuery += `WHERE case_type LIKE ? OR case_status LIKE ? OR priority LIKE ? `;
-        const searchParam = `%${search}%`;
-        queryParams.push(searchParam, searchParam, searchParam);
-    }
-
-    // ✅ Get total count
-    const [countResult]: any = await db.query(
-        `SELECT COUNT(*) as total ${baseQuery}`,
-        queryParams
-    );
-
-    const total = countResult[0].total;
-
-    // ✅ Get paginated data
-    const [rows]: any = await db.query(
-        `SELECT * ${baseQuery} ORDER BY case_id DESC LIMIT ? OFFSET ?`,
-        [...queryParams, limit, offset]
-    );
-
-    return { rows, total, page, limit };
-};
+export async function getCasesRepository(
+  options: PaginateOptions
+): Promise<PaginationResult<Case>> {
+  return paginate<Case>("cases", {
+    ...options,
+    searchFields: ["case_description", "case_type", "case_status"], // define searchable columns per table
+  });
+}
 
 // Update case
 export const updateCaseRepository = async (
