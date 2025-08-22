@@ -4,10 +4,12 @@ import customerRoute from "./customer.routes";
 import staffLevelRoute from "./staffLevel.route";
 import contactRoute from "./contact.routes";
 import caseRoute from "./case.route";
+import { verifySession } from "../middlewares/sessionAuth";
 
 const router = Router();
 
-// no /api/v1 prefix here
+router.use(verifySession)
+
 router.use("/customers", customerRoute);
 router.use("/staff-level", staffLevelRoute);
 router.use("/contacts", contactRoute);

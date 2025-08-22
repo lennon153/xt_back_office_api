@@ -1,10 +1,7 @@
 import { Router } from "express";
-import { verifySession } from "../middlewares/sessionAuth";
 import { createStaffLevelController, deleteStaffLevelController, getStaffLevelByIdController, getStaffLevelController, updateStaffLevelController } from "../controllers/staffLevel.controller";
 
-const staffLevelRoute = Router();
-
-staffLevelRoute.use(verifySession);
+const staffLevelRoute = Router();;
 staffLevelRoute.post("/",createStaffLevelController);
 staffLevelRoute.get("/",getStaffLevelController);
 staffLevelRoute.get("/:id",getStaffLevelByIdController);

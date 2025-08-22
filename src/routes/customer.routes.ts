@@ -1,10 +1,7 @@
 import { Router, Response  } from "express";;
-import { verifySession } from "../middlewares/sessionAuth";
 import { createCustomerController,updateCustomerController,deleteCustomerController, getAllCustomersController, getCustomerByCustomerIdController } from "../controllers/customer.controller";
 
 const customerRoute = Router();
-
-customerRoute.use(verifySession)
 
 customerRoute.post("/",createCustomerController)
 customerRoute.get("/:customer_id",getCustomerByCustomerIdController)

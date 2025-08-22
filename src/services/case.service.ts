@@ -72,6 +72,8 @@ export const updateCaseService = async (
 
   return { case_id: caseId, ...updatedCase };
 }
+
+
 export const deleteCaseService = async (caseId: number) =>{
     const result = await deleteCaseRepository(caseId);
     if(result.affectedRows=== 0){

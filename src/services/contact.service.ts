@@ -2,7 +2,7 @@ import { AppError } from "../utils/customError";
 import { HttpStatus } from "../constants/httpStatus";
 import { createContactRepository, deleteContactRepository, getAllContactsRepository, getContactDetailByIdRepository, updateContactRepository } from "../repository/contact.repository";
 import { formatDateHour } from "../utils/dateFormat";
-import { ContactCreate } from "../types/contact.type";
+import { CallLogDetail, ContactCreate, ContactWithDetails, UsernameWithDetails } from "../types/contact.type";
 import fs from "fs";
 import { parse } from "csv-parse";
 
@@ -55,67 +55,80 @@ export const getAllContactsService = async (
 export const getContactDetailService = async (contactId: number) => {
   const rows = await getContactDetailByIdRepository(contactId);
 
-  if (rows.length === 0) {
+  if (!rows || rows.length === 0) {
     throw new AppError("Contact not found", HttpStatus.NOT_FOUND);
   }
 
-  const contact = {
-    contact_id: rows[0].contact_id,
-    full_name: rows[0].full_name,
-    tel: rows[0].tel,
-    contact_type: rows[0].contact_type,
-    usernames: [] as any[],
+  const contactType = rows[0].contact_type as "lead" | "customer";
+
+  const contact: ContactWithDetails = {
+    contact: {
+      email:rows[0].email,
+      contact_id: rows[0].contact_id,
+      full_name: rows[0].full_name,
+      call_note: rows[0].call_note,
+      tel: rows[0].tel,
+      contact_type: contactType,
+    },
+    usernames: [],
+    call_logs: [],
   };
 
-  // Group usernames by username_id
-  const usernameMap = new Map<number, any>();
+  // ---- Usernames + platform ----
+  if (contactType === "customer") {
+    const usernameMap = new Map<number, UsernameWithDetails>();
+    rows.forEach((row: any) => {
+      if (!row.username_id) return;
 
-  rows.forEach((row: any) => {
-    if (!usernameMap.has(row.username_id)) {
-      usernameMap.set(row.username_id, {
-        username_id: row.username_id,
-        username: row.username,
-        username_status: row.username_status,
-        life_cycle: row.life_cycle,
-        register_date: row.register_date
-          ? formatDateHour(new Date(row.register_date))
-          : null,
-        has_deposited: row.has_deposited,
-        last_deposit: row.last_deposit,
-        vip_level: row.vip_level,
-        platform: {
-          platform_id: row.platform_id,
-          platform_name: row.platform_name,
-          type: {
-            type_id: row.type_id,
-            type_name: row.type_name,
+      if (!usernameMap.has(row.username_id)) {
+        usernameMap.set(row.username_id, {
+          username_id: row.username_id,
+          username: row.username,
+          username_status: row.username_status ?? null,
+          life_cycle: row.life_cycle ?? null,
+          register_date: row.register_date ? formatDateHour(new Date(row.register_date)) : null,
+          has_deposited: row.has_deposited ?? false,
+          last_deposit: row.last_deposit ? formatDateHour(new Date(row.last_deposit)) : null,
+          vip_level: row.vip_level ?? null,
+          platform: {
+            platform_id: row.platform_id ?? 0,
+            platform_name: row.platform_name ?? "",
+            type: {
+              type_id: row.type_id ?? 0,
+              type_name: row.type_name ?? "",
+            },
           },
-        },
-        call_logs: [] as any[],
+        });
+      }
+    });
+    contact.usernames = Array.from(usernameMap.values());
+  }
+
+  // ---- Call logs + optional contact_points ----
+  const callLogMap = new Map<number, CallLogDetail>();
+  rows.forEach((row: any) => {
+    if (!row.call_id) return;
+
+    if (!callLogMap.has(row.call_id)) {
+      callLogMap.set(row.call_id, {
+        call_id: row.call_id,
+        point_id: row.point_id ?? 0,
+        staff_id: row.staff_id ?? 0,
+        call_status: row.call_status ?? "no_answer",
+        call_start_at: row.call_start_at ? formatDateHour(new Date(row.call_start_at)) : null,
+        call_end_at: row.call_end_at ? formatDateHour(new Date(row.call_end_at)) : null,
+        next_action_at: row.next_action_at ? formatDateHour(new Date(row.next_action_at)) : null,
+        channel_code: row.cp_channel_code,
+        channel_name: row.channel_name ?? "",
+  
       });
     }
-
-    // Push call log into corresponding username
-    usernameMap.get(row.username_id).call_logs.push({
-      point_id: row.point_id,
-      staff_id: row.staff_id,
-      call_status: row.call_status,
-      call_start_at: row.call_start_at
-        ? formatDateHour(new Date(row.call_start_at))
-        : null,
-      call_end_at: row.call_end_at
-        ? formatDateHour(new Date(row.call_end_at))
-        : null,
-      next_action_at: row.next_action_at
-        ? formatDateHour(new Date(row.next_action_at))
-        : null,
-    });
   });
-
-  contact.usernames = Array.from(usernameMap.values());
+  contact.call_logs = Array.from(callLogMap.values());
 
   return contact;
 };
+
 
 export const createContactService = async (contact: ContactCreate) => {
   const now = new Date();

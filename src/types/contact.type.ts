@@ -77,15 +77,8 @@ export interface PaginatedContacts {
 }
 
   //TODO fix Type later
-export interface ContactDetail {
-  contact_id: number;
-  full_name: string;
-  tel: string;
-  contact_type: string;
-  usernames: Username[]; // Array because one contact may have multiple usernames
-}
-
 export interface CallLogDetail {
+  call_id: number;
   point_id: number;
   staff_id: number;
   call_status:
@@ -99,6 +92,8 @@ export interface CallLogDetail {
   call_start_at: string | null;
   call_end_at: string | null;
   next_action_at: string | null;
+  channel_code: string;
+  channel_name?: string;
 }
 
 export interface PlatformType {
@@ -122,13 +117,17 @@ export interface UsernameWithDetails {
   last_deposit: string | null;
   vip_level: number | null;
   platform: Platform;
-  call_logs: CallLogDetail[];
 }
 
 export interface ContactWithDetails {
-  contact_id: number;
-  full_name: string | null;
-  tel: string | null;
-  contact_type: "lead" | "customer";
+  contact:{
+    contact_id: number;
+    email: "";
+    full_name: string | null;
+    tel: string | null;
+    call_note:string;
+    contact_type: "lead" | "customer";
+  }
   usernames: UsernameWithDetails[];
+  call_logs: CallLogDetail[];
 }

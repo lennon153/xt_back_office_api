@@ -36,47 +36,74 @@ export const getAllContactsRepository = async (
 export const getContactDetailByIdRepository = async (contactId: number) => {
   const [rows]: any = await db.query(
     `
-    SELECT 
+    SELECT
       c.contact_id,
-      c.full_name,
       c.tel,
+      c.full_name,
       c.contact_type,
-
-      u.username_id,
-      u.username,
-      u.username_status,
-      u.life_cycle,
-      u.register_date,
-      u.has_deposited,
-      u.last_deposit,
-      u.vip_level,
+      c.register_date,
+      c.last_call_at,
+      c.last_call_status,
+      c.personal_note,
 
       p.platform_id,
       p.platform_name,
-      
       pt.type_id,
       pt.type_name,
 
-      cl.contact_id,
-      cl.point_id,
-      cl.staff_id,
+      cp.point_id,
+      cp.channel_code AS cp_channel_code,
+      cp.value_raw,
+      cp.value_norm,
+      cp.is_primary,
+      cp.verify_at,
+
+
+      cl.call_id,
       cl.call_status,
+      cl.call_note,
       cl.call_start_at,
       cl.call_end_at,
-      cl.next_action_at
-    FROM 
-      contacts c
-    JOIN 
-      usernames u ON u.contact_id = c.contact_id
-    JOIN 
-      platforms p ON u.platform_id = p.platform_id
-    JOIN 
-      platform_types pt ON p.type_id = pt.type_id
-    JOIN 
-      call_logs cl ON cl.contact_id = c.contact_id
-    WHERE 
-      c.contact_id = ?
-    ORDER BY u.register_date DESC
+      cl.next_action_at,
+
+      s.staff_id,
+      s.dept_code,
+      s.level_code,
+      s.full_name AS staff_name,
+      s.email AS staff_email,
+      s.join_date,
+
+        
+        u.username_id,
+        u.username,
+        u.last_deposit,
+        u.username_status,
+        u.life_cycle,
+        u.vip_level,
+        u.platform_id,
+        
+        cc.channel_code,
+        cc.channel_name
+
+    FROM contacts c
+    LEFT JOIN contact_points cp 
+        ON cp.contact_id = c.contact_id
+    LEFT JOIN call_logs cl 
+        ON cl.contact_id = c.contact_id
+        AND cl.point_id = cp.point_id
+    LEFT JOIN staff s 
+        ON s.staff_id = cl.staff_id
+    LEFT JOIN usernames u 
+        ON u.contact_id = c.contact_id
+    LEFT JOIN platforms p
+        ON u.platform_id = p.platform_id
+    LEFT JOIN platform_types pt
+        ON p.type_id = pt.type_id
+    LEFT JOIN contact_channels cc  
+        ON cc.channel_code = cp.channel_code
+    WHERE c.contact_id = ?
+    ORDER BY cl.call_start_at DESC;
+
     `,
     [contactId]
   );
