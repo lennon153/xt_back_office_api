@@ -39,7 +39,7 @@ function getDatabaseConfig(): DatabaseConfig {
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
-    timezone: 'Z'
+    timezone: 'UTC+7'
   };
 }
 

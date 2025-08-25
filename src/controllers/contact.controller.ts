@@ -1,28 +1,71 @@
 import { Request, Response, NextFunction } from "express";
-import { createContactService, deleteContactService, getAllContactsService, getContactDetailService, updateContactService, uploadContactsCsvService } from "../services/contact.service";
+import { createContactWithCaseAndDepositService, deleteContactService, getAllContactsService, getContactDetailService, updateContactService, uploadContactsCsvService } from "../services/contact.service";
 import { ApiResponse } from "../types/api.type";
 import {  ContactCreate, ContactWithDetails, PaginatedContacts } from "../types/contact.type";
 import { ContactCreateSchema } from "../validators/contact.schema";
 import { HttpStatus } from "../constants/httpStatus";
 
 export const getAllContactsController = async (
-  req: Request<{}, {}, {}, { page?: string; limit?: string; search?: string }>,
-  res: Response<ApiResponse<PaginatedContacts>>,
+  req: Request<{}, {}, {}, { page?: string; limit?: string; startDate?: string; endDate?: string }>,
+  res: Response<ApiResponse<any>>,
   next: NextFunction
 ) => {
   try {
     const page = parseInt(req.query.page || "1", 10);
     const limit = parseInt(req.query.limit || "10", 10);
-    const search = req.query.search || "";
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
 
-    if (page <= 0 || limit <= 0) {
+    // Validate page and limit
+    if (isNaN(page) || isNaN(limit) || page <= 0 || limit <= 0) {
       return res.status(400).json({
         success: false,
         message: "Page and limit must be positive integers.",
       });
     }
 
-    const result = await getAllContactsService(page, limit, search);
+    // Validate dates if either is provided
+    if ((startDate && !endDate) || (!startDate && endDate)) {
+      return res.status(400).json({
+        success: false,
+        message: "Both startDate and endDate are required when filtering by date.",
+      });
+    }
+
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const today = new Date();
+      const maxStartDate = new Date();
+      maxStartDate.setDate(today.getDate() - 90);
+
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date format for startDate or endDate.",
+        });
+      }
+      if (start > end) {
+        return res.status(400).json({
+          success: false,
+          message: "startDate cannot be after endDate.",
+        });
+      }
+      if (start < maxStartDate) {
+        return res.status(400).json({
+          success: false,
+          message: "startDate cannot be more than 90 days before today.",
+        });
+      }
+      if (end > today) {
+        return res.status(400).json({
+          success: false,
+          message: "endDate cannot be in the future.",
+        });
+      }
+    }
+
+    const result = await getAllContactsService(page, limit, startDate, endDate);
 
     return res.json({
       success: true,
@@ -34,6 +77,7 @@ export const getAllContactsController = async (
     next(err); // send to global error handler
   }
 };
+
 
 export const getContactDetailController = async (
   req: Request<{ contactId: string }>,
@@ -64,9 +108,37 @@ export const getContactDetailController = async (
   }
 };
 
-export const createContactController = async (req: Request, res: Response<ApiResponse<any>>,next: NextFunction) =>{
+// export const createContactController = async (req: Request, res: Response<ApiResponse<any>>,next: NextFunction) =>{
+//   try {
+//     // Validate body with Zod
+//     const parsed = ContactCreateSchema.safeParse(req.body);
+//     if (!parsed.success) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Validation failed",
+//         errors: parsed.error.flatten(),
+//       });
+//     }
+
+//    const newContact = await createContactService(parsed.data as ContactCreate);
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Contact created successfully",
+//       data: newContact,
+//     });
+//   } catch (err) {
+//     next(err);
+//   }
+// }
+
+export const createContactController = async (
+  req: Request,
+  res: Response<ApiResponse<any>>,
+  next: NextFunction
+) => {
   try {
-    // Validate body with Zod
+    // Validate request body with Zod
     const parsed = ContactCreateSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
@@ -76,17 +148,18 @@ export const createContactController = async (req: Request, res: Response<ApiRes
       });
     }
 
-   const newContact = await createContactService(parsed.data as ContactCreate);
+    // Call service
+    const newContactData = await createContactWithCaseAndDepositService(parsed.data);
 
     return res.status(201).json({
       success: true,
-      message: "Contact created successfully",
-      data: newContact,
+      message: "Contact created successfully with case and deposit",
+      data: newContactData,
     });
   } catch (err) {
     next(err);
   }
-}
+};
 
 export const updateContactController = async (req:Request<{id: string}>,res: Response<ApiResponse<any>>, next: NextFunction) =>{
   try{

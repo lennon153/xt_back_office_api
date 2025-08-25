@@ -1,6 +1,6 @@
 import { db } from "../configs/db";
 import { Case, CreateCase, UpdateCase } from "../types/case.type";
-import { PaginateOptions, PaginationOptions, PaginationResult } from "../types/pagination.type";
+import { PaginateOptions, PaginationResult } from "../types/pagination.type";
 import { paginate } from "../utils/pagination";
 
 export const createCaseRepository = async (newCase: CreateCase) => {
@@ -10,7 +10,7 @@ export const createCaseRepository = async (newCase: CreateCase) => {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       newCase.contact_id,
-      newCase.username_id ?? null,
+      newCase.username_id,
       newCase.case_type,
       newCase.case_description ?? null,
       newCase.case_status,
@@ -25,6 +25,8 @@ export const createCaseRepository = async (newCase: CreateCase) => {
     ...newCase,
   };
 };
+
+
 
 export async function getCasesRepository(
   options: PaginateOptions

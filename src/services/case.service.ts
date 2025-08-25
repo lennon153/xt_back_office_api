@@ -1,10 +1,10 @@
-import ca from "zod/v4/locales/ca.js";
 import { HttpStatus } from "../constants/httpStatus";
 import { createCaseRepository, deleteCaseRepository, getCasesRepository, updateCaseRepository } from "../repository/case.repository"
 import { CaseResponse, CreateCase, UpdateCase } from "../types/case.type";
 import { AppError } from "../utils/customError";
 import { formatDateHour } from "../utils/dateFormat";
 import { PaginateOptions, PaginationResult } from "../types/pagination.type";
+import { autoAssignCase } from "../utils/case/autoAssignCase";
 
 
 export const createCaseService = async (
@@ -18,7 +18,12 @@ export const createCaseService = async (
     update_at: now,
   };
 
+  // Insert case into DB
   const createdCase = await createCaseRepository(newCase);
+
+  // ✅ Optionally: auto-assign staff here
+  await autoAssignCase(createdCase.case_id);
+
   return createdCase;
 };
 

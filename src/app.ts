@@ -1,8 +1,6 @@
 import express from "express";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler";
 import { requestLogger } from "./middlewares/requestLogger";
-import { notFound } from "./middlewares/notFound";
-import { AutoScheduler } from "./utils/autoScheduler";
 import { corsConfig } from "./middlewares/corsConfig";
 import { rateLimiter } from "./middlewares/rateLimiter";
 import routes from "./routes/index.route";
@@ -22,25 +20,10 @@ app.use(requestLogger);
 // 👇 apply global prefix ONCE
 app.use("/api/v1", routes);
 
-// Global 404 handler (must be after all routes)
-
-
-// Every minute task example
-// const minuteTask = new AutoScheduler(
-//   async () => {
-//     console.log('Doing work every minute...');
-//     // Add your task logic here
-//   },
-//   { 
-//     cronTime: '* * * * *', // Every minute
-//     timeZone: 'UTC' // You can keep your preferred timezone
-//   },
-//   'MinuteTask'
-// );
+// Auto check functions
+// dailyDepositCheckTask
 
 // Global error handler (must be last)
 app.use(errorHandler);
 app.use(notFoundHandler);
-app.use(notFound);
-
 export default app;

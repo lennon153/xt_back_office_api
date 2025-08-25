@@ -2,7 +2,12 @@ import { Request, Response , NextFunction } from "express";
 import { db } from "../configs/db";
 
 export interface SessionRequest extends Request {
-    userId? : string;
+  userId?: string;
+  user?: {
+    name: string;
+    role: string;
+    createdAt: Date;
+  };
 }
 
 export const verifySession = async (req: SessionRequest, res: Response, next: NextFunction) =>{

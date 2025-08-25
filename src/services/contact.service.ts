@@ -1,20 +1,19 @@
 import { AppError } from "../utils/customError";
 import { HttpStatus } from "../constants/httpStatus";
-import { createContactRepository, deleteContactRepository, getAllContactsRepository, getContactDetailByIdRepository, updateContactRepository } from "../repository/contact.repository";
+import { createContactCaseAndDepositRepository, createContactRepository, deleteContactRepository, getAllContactsRepository, getContactDetailByIdRepository, updateContactRepository } from "../repository/contact.repository";
 import { formatDateHour } from "../utils/dateFormat";
 import { CallLogDetail, ContactCreate, ContactWithDetails, UsernameWithDetails } from "../types/contact.type";
 import fs from "fs";
 import { parse } from "csv-parse";
 
-
-
 export const getAllContactsService = async (
   page: number = 1,
   limit: number = 10,
-  search: string = ''
+  startDate?: string,
+  endDate?: string
 ) => {
   try {
-    const { rows, total } = await getAllContactsRepository(page, limit, search);
+    const { rows, total } = await getAllContactsRepository(page, limit, startDate, endDate);
 
     const totalPages = Math.ceil(total / limit);
     const hasNext = page < totalPages;
@@ -26,13 +25,13 @@ export const getAllContactsService = async (
         contact_id: row.contact_id,
         tel: row.tel,
         full_name: row.full_name,
-        dob: row.dob ? formatDateHour(new Date(row.dob)): null,
+        dob: row.dob ? formatDateHour(new Date(row.dob)) : null,
         contact_type: row.contact_type,
-        register_date: row.register_date ? formatDateHour(new Date(row.register_date)): null,
-        last_call_at: row.last_call_at ? formatDateHour(new Date(row.last_call_at)): null,
+        register_date: row.register_date ? formatDateHour(new Date(row.register_date)) : null,
+        last_call_at: row.last_call_at ? formatDateHour(new Date(row.last_call_at)) : null,
         last_call_status: row.last_call_status,
         contact_line: row.contact_line,
-        personal_note:row.personal_note,
+        personal_note: row.personal_note,
         created_at: row.create_at ? formatDateHour(new Date(row.create_at)) : null,
         updated_at: row.update_at ? formatDateHour(new Date(row.update_at)) : null,
       })),
@@ -50,7 +49,6 @@ export const getAllContactsService = async (
     throw new AppError("Contacts not found", HttpStatus.NOT_FOUND);
   }
 };
-
 
 export const getContactDetailService = async (contactId: number) => {
   const rows = await getContactDetailByIdRepository(contactId);
@@ -113,7 +111,7 @@ export const getContactDetailService = async (contactId: number) => {
       callLogMap.set(row.call_id, {
         call_id: row.call_id,
         point_id: row.point_id ?? 0,
-        staff_id: row.staff_id ?? 0,
+        user_id: row.staff_id ?? 0,
         call_status: row.call_status ?? "no_answer",
         call_start_at: row.call_start_at ? formatDateHour(new Date(row.call_start_at)) : null,
         call_end_at: row.call_end_at ? formatDateHour(new Date(row.call_end_at)) : null,
@@ -130,18 +128,22 @@ export const getContactDetailService = async (contactId: number) => {
 };
 
 
-export const createContactService = async (contact: ContactCreate) => {
+export const createContactWithCaseAndDepositService = async (
+  contactData: Omit<ContactCreate, "create_at" | "update_at">
+) => {
   const now = new Date();
 
-  // Merge automatic timestamps
-  const contactWithTimestamps: ContactCreate = {
-    ...contact,
+  // Add timestamps
+  const contactPayload: ContactCreate = {
+    ...contactData,
     create_at: now,
     update_at: now,
   };
 
-  const newContact = await createContactRepository(contactWithTimestamps);
-  return newContact;
+  // Call repository to handle contact → case → deposit
+  const result = await createContactCaseAndDepositRepository(contactPayload);
+
+  return result;
 };
 
 export const updateContactService = async (id: number, contact: Partial<ContactCreate>) =>{
