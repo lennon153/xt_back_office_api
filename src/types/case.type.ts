@@ -36,7 +36,7 @@ export interface CreateCase {
   case_status: "pending" | "freeze" | "transferred" | "closed";
   priority: "low" | "normal" | "urgent";
   create_at: Date;
-  update_at: Date;
+  update_at?: Date;
 }
 
 // Dedicated type for update

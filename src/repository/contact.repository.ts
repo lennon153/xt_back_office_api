@@ -2,8 +2,7 @@ import { PoolConnection, ResultSetHeader } from "mysql2";
 import {db} from "../configs/db";
 import { ContactCreate } from "../types/contact.type";
 import { CreateCase } from "../types/case.type";
-import { autoAssignCase } from "../utils/case/autoAssignCase";
-
+import { autoAssignCase } from "../utils/case/autoTransfer";
 
 export const getAllContactsRepository = async (
   page: number = 1,
@@ -76,6 +75,7 @@ export const getContactDetailByIdRepository = async (contactId: number) => {
       us.name,
       us.email,
       us.role,
+      
       u.username_id,
       u.username,
       u.last_deposit,
@@ -105,7 +105,6 @@ export const getContactDetailByIdRepository = async (contactId: number) => {
       ON cc.channel_code = cp.channel_code
     WHERE c.contact_id = ?
     ORDER BY cl.call_start_at DESC;
-
     `,
     [contactId]
   );

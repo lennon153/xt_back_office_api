@@ -4,7 +4,7 @@ import { CaseResponse, CreateCase, UpdateCase } from "../types/case.type";
 import { AppError } from "../utils/customError";
 import { formatDateHour } from "../utils/dateFormat";
 import { PaginateOptions, PaginationResult } from "../types/pagination.type";
-import { autoAssignCase } from "../utils/case/autoAssignCase";
+import { autoAssignCase } from "../utils/case/autoTransfer";
 
 
 export const createCaseService = async (

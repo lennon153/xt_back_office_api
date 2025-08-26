@@ -1,110 +1,185 @@
 import { db } from "../../configs/db";
 import { AutoScheduler } from "../autoScheduler";
 
-interface StaffLoad {
-  staff_id: number;
-  total_cases: number;
-}
-
-// Find staff with the least number of cases
-const getLeastBusyStaff = async (): Promise<StaffLoad | null> => {
-  const [rows] = await db.query(
-    `SELECT s.staff_id, COUNT(ca.assignment_id) AS total_cases
-     FROM staff s
-     LEFT JOIN case_assignments ca ON s.staff_id = ca.staff_id
-     GROUP BY s.staff_id
+// -------------------------------
+// Get least busy user by role
+// -------------------------------
+const getNextUser = async (role: string, excludeUserIds: string[] = []) => {
+  const [rows]: any = await db.query(
+    `SELECT u.id AS user_id, COUNT(ca.assignment_id) AS total_cases
+     FROM user u
+     LEFT JOIN case_assignments ca ON u.id = ca.user_id
+     WHERE u.role = ? ${excludeUserIds.length ? `AND u.id NOT IN (?)` : ""}
+     GROUP BY u.id
      ORDER BY total_cases ASC
-     LIMIT 1`
+     LIMIT 1`,
+    excludeUserIds.length ? [role, excludeUserIds] : [role]
   );
 
-  return (rows as StaffLoad[])[0] || null;
+  return rows[0] || null;
 };
 
-// Auto-assign case to the least busy staff
-export const autoAssignCase = async (caseId: number, note?: string) => {
-  const staff = await getLeastBusyStaff();
-  if (!staff) throw new Error("No staff available for assignment");
+// -------------------------------
+// Auto-assign case based on has_deposited
+// -------------------------------
+export const autoAssignCase = async (
+  caseId: number,
+  usernameId: number,
+  note?: string
+) => {
+  // 1️⃣ Get username's has_deposited
+  const [userRows]: any = await db.query(
+    `SELECT has_deposited FROM usernames WHERE username_id = ?`,
+    [usernameId]
+  );
+  if (userRows.length === 0) throw new Error("Username not found");
+  const hasDeposited = userRows[0].has_deposited;
 
-  // Default note if none provided
-  const assignmentNote = note ?? "Case auto-assigned by system";
+  // 2️⃣ Decide user role to assign
+  const role = hasDeposited < 3 ? "telesales" : "crm";
 
+  // 3️⃣ Get previous assignments for exclusion
+  const [assignedRows]: any = await db.query(
+    `SELECT user_id FROM case_assignments WHERE case_id = ? ORDER BY assign_at ASC`,
+    [caseId]
+  );
+  const excludeUserIds = assignedRows.map((r: any) => r.user_id);
+
+  // 4️⃣ Pick least busy user
+  const user = await getNextUser(role, excludeUserIds);
+  if (!user) throw new Error(`No available user for role ${role}`);
+
+  // 5️⃣ Insert new assignment
   await db.query(
-    `INSERT INTO case_assignments (case_id, staff_id, assign_at, assignment_note)
+    `INSERT INTO case_assignments (case_id, user_id, assign_at, assignment_note)
      VALUES (?, ?, NOW(), ?)`,
-    [caseId, staff.staff_id, assignmentNote]
+    [caseId, user.user_id, note ?? `Auto-assigned by system (${role})`]
   );
 
-  console.log(
-    `Case ${caseId} assigned to staff ${staff.staff_id} (total before assignment = ${staff.total_cases}) with note: "${assignmentNote}"`
+  // 6️⃣ Update case handler
+  await db.query(
+    `UPDATE cases SET handler_id = ?, update_at = NOW() WHERE case_id = ?`,
+    [user.user_id, caseId]
   );
+
+  console.log(`✅ Case ${caseId} assigned to user ${user.user_id} (${role})`);
+  return user.user_id;
 };
 
-// Daily deposit check + auto assignment
-export const dailyDepositCheckTask = new AutoScheduler(
+// -------------------------------
+// Daily rotation task
+// -------------------------------
+export const dailyRotationTask = new AutoScheduler(
   async () => {
-    console.log("🚀 Checking users with last deposit < 7 days...");
+    console.log("🔍 Running 7-day rotation task...");
 
-    const [rows] = await db.query(
-      `
-        SELECT 
-          u.username_id, 
-          u.contact_id, 
-          u.platform_id, 
-          u.username, 
-          u.username_status, 
-          u.life_cycle, 
-          u.register_date, 
-          u.has_deposited, 
-          u.last_deposit, 
-          u.vip_level,
-
-          c.case_id,
-          c.username_id,
-          c.case_type,
-          c.case_status,
-          c.priority,
-            
-          ca.assignment_id,
-          ca.case_id,
-          ca.staff_id,
-          ca.assign_at,
-          ca.assignment_note
-
-        FROM usernames u
-        LEFT JOIN cases c
-          ON c.username_id = u.username_id
-        LEFT JOIN case_assignments ca
-          ON c.case_id = ca.case_id
-        WHERE u.last_deposit IS NOT NULL
-          AND DATEDIFF(NOW(), u.last_deposit) < 7;
-      `
+    const [rows]: any = await db.query(
+      `SELECT 
+        u.username_id, 
+        c.case_id, 
+        c.case_status,
+        c.update_at,
+        u.has_deposited,
+        u.last_deposit
+      FROM usernames u
+      JOIN cases c ON c.username_id = u.username_id
+      WHERE u.last_deposit IS NOT NULL
+        AND c.case_status IN ('pending','transferred')`
     );
 
-    const users = rows as { username_id: number; case_id: number | null }[];
+    for (const c of rows) {
+      const daysSinceUpdate = Math.floor(
+        (Date.now() - new Date(c.update_at).getTime()) / (1000 * 60 * 60 * 24)
+      );
 
-    if (users.length === 0) {
-      console.log("⚠️ No users found with last deposit < 7 days.");
-      return;
-    }
+      // Count previous assignments
+      const [assignedRows]: any = await db.query(
+        `SELECT user_id FROM case_assignments WHERE case_id = ?`,
+        [c.case_id]
+      );
+      const assignedCount = assignedRows.length;
 
-    for (const user of users) {
-      if (user.case_id) {
-        try {
+      // Check if 7 days have passed since last update AND last deposit was more than 7 days ago
+      const daysSinceLastDeposit = Math.floor(
+        (Date.now() - new Date(c.last_deposit).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      if (daysSinceUpdate >= 7 && daysSinceLastDeposit >= 7) {
+        if (assignedCount < 3) {
+          // Rotate to next user based on current deposit status
           await autoAssignCase(
-            user.case_id,
-            `Auto-assigned due to last deposit < 7 days`
+            c.case_id,
+            c.username_id,
+            `Rotation #${assignedCount + 1} - No deposit in 7 days`
           );
-        } catch (err) {
-          console.error(`❌ Failed to assign case ${user.case_id}:`, err);
+          await db.query(
+            `UPDATE cases SET case_status = 'transferred', update_at = NOW() WHERE case_id = ?`,
+            [c.case_id]
+          );
+          console.log(`🔄 Case ${c.case_id} rotated (${assignedCount + 1}/3 rotations)`);
+        } else if (assignedCount >= 3) {
+          // Freeze after 3 rotations (21 days)
+          await db.query(
+            `UPDATE cases SET case_status = 'frozen', update_at = NOW() WHERE case_id = ?`,
+            [c.case_id]
+          );
+          console.log(`⏸ Case ${c.case_id} frozen after 21 days rotation`);
         }
-      } else {
-        console.log(`ℹ️ User ${user.username_id} has no case to assign.`);
       }
     }
   },
   {
-    cronTime: process.env.DAILY_DEPOSIT_TASK_CRON || "0 7 * * *", // Run daily at 7AM
+    cronTime: process.env.ROTATION_TASK_CRON || "0 7 * * *", // daily at 7AM
     timeZone: "Asia/Phnom_Penh",
   },
-  "Daily Deposit Check Task"
+  "Daily Rotation Task"
+);
+
+// -------------------------------
+// Unfreeze frozen cases after 60 days
+// -------------------------------
+export const unfreezeCasesTask = new AutoScheduler(
+  async () => {
+    console.log("🔍 Checking frozen cases to unfreeze...");
+
+    const [rows]: any = await db.query(
+      `SELECT c.case_id, c.username_id, u.has_deposited 
+       FROM cases c
+       JOIN usernames u ON c.username_id = u.username_id
+       WHERE c.case_status = 'frozen'
+         AND NOW() >= c.update_at + INTERVAL 60 DAY`
+    );
+
+    for (const c of rows) {
+      // Check current deposit status to determine role assignment
+      const role = c.has_deposited < 3 ? "telesales" : "crm";
+      
+      // Get least busy user for the appropriate role
+      const user = await getNextUser(role, []);
+      
+      if (user) {
+        // Update case status and assign to new user
+        await db.query(
+          `UPDATE cases SET case_status = 'pending', handler_id = ?, update_at = NOW() WHERE case_id = ?`,
+          [user.user_id, c.case_id]
+        );
+        
+        // Create new assignment record
+        await db.query(
+          `INSERT INTO case_assignments (case_id, user_id, assign_at, assignment_note)
+           VALUES (?, ?, NOW(), ?)`,
+          [c.case_id, user.user_id, "Reassigned after 60-day freeze expired"]
+        );
+        
+        console.log(`🔄 Case ${c.case_id} unfrozen and assigned to ${user.user_id} (${role})`);
+      } else {
+        console.warn(`⚠️ No available ${role} user for case ${c.case_id}`);
+      }
+    }
+  },
+  {
+    cronTime: process.env.UNFREEZE_TASK_CRON || "0 7 * * *", // daily at 7AM
+    timeZone: "Asia/Phnom_Penh",
+  },
+  "Unfreeze Cases Task After 60 Day"
 );
