@@ -11,18 +11,21 @@ const LastCallStatus = z
   .transform(s => (s === "no_anser" ? "no_answer" : s));
 
 export const ContactCreateSchema = z.object({
-  tel: NullableStr,                          // optional | null | "" → null
-  full_name: NullableStr,                    // optional | null | "" → null
-  contact_type: z.enum(["lead","customer"]).optional(),
-  register_date: OptionalNullableDate,       // accepts Date or parsable string
-  last_call_at: z.coerce.date(),             // required
-  last_call_status: LastCallStatus,          // required & normalized
-  personal_note: NullableStr,                // required in your interface → keep nullable but required
-  contact_line: NullableStr,                 // required in your interface → keep nullable but required
-  create_at: z.coerce.date(),                // required
-  update_at: OptionalNullableDate,            // optional | null
+  tel: NullableStr,
+  full_name: NullableStr,
+  contact_type: z.enum(["lead", "customer"]).optional().nullable(),
+  register_date: OptionalNullableDate,
+  last_call_at: z.coerce.date(),
+  last_call_status: LastCallStatus,
+  personal_note: NullableStr,
+  contact_line: NullableStr,
+  create_at: z.coerce.date(),
+  update_at: OptionalNullableDate,
   dob: z.coerce.date().optional().nullable(),
-});
+}).transform((data) => ({
+  ...data,
+  contact_type: data.contact_type ?? undefined, // Convert null to undefined
+}));
 
 /** Inferred TS type after Zod transforms */
 export type ContactCreateInput = z.infer<typeof ContactCreateSchema>;

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { createContactWithCaseAndDepositService, deleteContactService, getAllContactsService, getContactDetailService, updateContactService, uploadContactsCsvService } from "../services/contact.service";
+import {  createContactService, deleteContactService, getAllContactsService, getContactDetailService, updateContactService, uploadContactsCsvService } from "../services/contact.service";
 import { ApiResponse } from "../types/api.type";
 import {  ContactCreate, ContactWithDetails, PaginatedContacts } from "../types/contact.type";
 import { ContactCreateSchema } from "../validators/contact.schema";
@@ -134,12 +134,13 @@ export const getContactDetailController = async (
 
 export const createContactController = async (
   req: Request,
-  res: Response<ApiResponse<any>>,
+  res: Response<ApiResponse>,
   next: NextFunction
 ) => {
   try {
-    // Validate request body with Zod
+    // Validate with Zod
     const parsed = ContactCreateSchema.safeParse(req.body);
+
     if (!parsed.success) {
       return res.status(400).json({
         success: false,
@@ -148,19 +149,36 @@ export const createContactController = async (
       });
     }
 
+    // Normalize optional fields to match ContactCreate
+    const contactData: ContactCreate = {
+      tel: parsed.data.tel ?? null,
+      full_name: parsed.data.full_name ?? null,
+      contact_type: parsed.data.contact_type ?? "lead",
+      register_date: parsed.data.register_date ?? null,
+      last_call_at: parsed.data.last_call_at,
+      last_call_status: parsed.data.last_call_status,
+      personal_note: parsed.data.personal_note ?? null,
+      contact_line: parsed.data.contact_line ?? null,
+      create_at: parsed.data.create_at,
+      update_at: parsed.data.update_at ?? null,
+      dob: parsed.data.dob ?? null,
+    };
+
     // Call service
-    const newContactData = await createContactWithCaseAndDepositService(parsed.data);
+    const newContact = await createContactService(contactData);
 
     return res.status(201).json({
       success: true,
-      message: "Contact created successfully with case and deposit",
-      data: newContactData,
+      message: "Contact created successfully",
+      data: newContact,
     });
-  } catch (err) {
-    next(err);
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Internal server error",
+    });
   }
 };
-
 export const updateContactController = async (req:Request<{id: string}>,res: Response<ApiResponse<any>>, next: NextFunction) =>{
   try{
     const id = Number(req.params.id);

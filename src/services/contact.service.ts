@@ -1,6 +1,6 @@
 import { AppError } from "../utils/customError";
 import { HttpStatus } from "../constants/httpStatus";
-import { createContactCaseAndDepositRepository, createContactRepository, deleteContactRepository, getAllContactsRepository, getContactDetailByIdRepository, updateContactRepository } from "../repository/contact.repository";
+import {  createContactRepository, deleteContactRepository, getAllContactsRepository, getContactDetailByIdRepository, updateContactRepository } from "../repository/contact.repository";
 import { formatDateHour } from "../utils/dateFormat";
 import { CallLogDetail, ContactCreate, ContactWithDetails, UsernameWithDetails } from "../types/contact.type";
 import fs from "fs";
@@ -128,22 +128,31 @@ export const getContactDetailService = async (contactId: number) => {
 };
 
 
-export const createContactWithCaseAndDepositService = async (
-  contactData: Omit<ContactCreate, "create_at" | "update_at">
-) => {
-  const now = new Date();
 
-  // Add timestamps
-  const contactPayload: ContactCreate = {
-    ...contactData,
-    create_at: now,
-    update_at: now,
+// export const createContactWithCaseAndDepositService = async (
+//   contactData: Omit<ContactCreate, "create_at" | "update_at">
+// ) => {
+//   const now = new Date();
+
+//   // Add timestamps
+//   const contactPayload: ContactCreate = {
+//     ...contactData,
+//     create_at: now,
+//     update_at: now,
+//   };
+
+//   // Call repository to handle contact → case → deposit
+//   const result = await createContactCaseAndDepositRepository(contactPayload);
+
+//   return result;
+// };
+
+export const createContactService = async (contact: ContactCreate) => {
+  const newContactId = await createContactRepository(contact);
+
+  return {
+    id: newContactId
   };
-
-  // Call repository to handle contact → case → deposit
-  const result = await createContactCaseAndDepositRepository(contactPayload);
-
-  return result;
 };
 
 export const updateContactService = async (id: number, contact: Partial<ContactCreate>) =>{

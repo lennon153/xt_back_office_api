@@ -16,7 +16,7 @@ const getNextUser = async (role: string, excludeUserIds: string[] = []) => {
     excludeUserIds.length ? [role, excludeUserIds] : [role]
   );
 
-  return rows[0] || null;
+  return rows[0] || null; 
 };
 
 // -------------------------------
@@ -25,7 +25,7 @@ const getNextUser = async (role: string, excludeUserIds: string[] = []) => {
 export const autoAssignCase = async (
   caseId: number,
   usernameId: number,
-  note?: string
+  note?: string 
 ) => {
   // 1️⃣ Get username's has_deposited
   const [userRows]: any = await db.query(
@@ -36,7 +36,7 @@ export const autoAssignCase = async (
   const hasDeposited = userRows[0].has_deposited;
 
   // 2️⃣ Decide user role to assign
-  const role = hasDeposited < 3 ? "telesales" : "crm";
+  const role = hasDeposited < 4 ? "telesales" : "crm";
 
   // 3️⃣ Get previous assignments for exclusion
   const [assignedRows]: any = await db.query(
@@ -152,7 +152,7 @@ export const unfreezeCasesTask = new AutoScheduler(
 
     for (const c of rows) {
       // Check current deposit status to determine role assignment
-      const role = c.has_deposited < 3 ? "telesales" : "crm";
+      const role = c.has_deposited < 4 ? "telesales" : "crm";
       
       // Get least busy user for the appropriate role
       const user = await getNextUser(role, []);

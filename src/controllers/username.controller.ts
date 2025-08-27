@@ -1,4 +1,3 @@
-
 import { Request, Response, NextFunction } from "express";
 import { createUsernameService, deleteUsernameService, getAllUsernameService, getUsernameByIdService, updateUsernameService } from "../services/username.service";
 import { ApiResponse } from "../types/api.type";
@@ -21,6 +20,7 @@ export const createUsernameController = async (
       data: createdUsername,
     });
   } catch (err: any) {
+
     // Zod validation errors
     if (err instanceof ZodError) {
       const flattened = err.flatten();
@@ -121,6 +121,7 @@ export const updateUsernameController = async (
       data: updatedUsername,
     });
   } catch (err: any) {
+    
     // Handle Zod validation errors
     if (err instanceof ZodError) {
       const flattened = err.flatten();

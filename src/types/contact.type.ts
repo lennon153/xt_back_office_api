@@ -25,13 +25,13 @@ export interface Contact{
 
 // For creating new contacts where some fields are optional
 export interface ContactCreate {
-  tel?: string | null;
-  full_name?: string | null;
-  contact_type?: 'lead' | 'customer';
+  tel?: string | null | undefined;
+  full_name?: string | null | undefined;
+  contact_type?: "lead" | "customer" | null | undefined;
   register_date?: Date | null;
   last_call_at: Date;
   last_call_status:
-  | 'no_anser' 
+  | 'no_answer' 
   | 'connected_declined' 
   | 'callback'
   | 'wrong_number' 

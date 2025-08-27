@@ -138,114 +138,114 @@ export const createContactRepository = async (contact: ContactCreate) => {
 /**
  * Transaction-aware version of createCaseRepository
  */
-export const createCaseRepositoryTx = async (
-  conn: PoolConnection,
-  newCase: CreateCase
-) => {
-  const [result] = await conn.query<ResultSetHeader>(
-    `INSERT INTO cases 
-      (contact_id, username_id, case_type, case_description, case_status, priority, create_at, update_at) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      newCase.contact_id,
-      newCase.username_id,
-      newCase.case_type,
-      newCase.case_description,
-      newCase.case_status,
-      newCase.priority,
-      newCase.create_at,
-      newCase.update_at,
-    ]
-  );
+// export const createCaseRepositoryTx = async (
+//   conn: PoolConnection,
+//   newCase: CreateCase
+// ) => {
+//   const [result] = await conn.query<ResultSetHeader>(
+//     `INSERT INTO cases 
+//       (contact_id, username_id, case_type, case_description, case_status, priority, create_at, update_at) 
+//      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+//     [
+//       newCase.contact_id,
+//       newCase.username_id,
+//       newCase.case_type,
+//       newCase.case_description,
+//       newCase.case_status,
+//       newCase.priority,
+//       newCase.create_at,
+//       newCase.update_at,
+//     ]
+//   );
 
-  return { case_id: result.insertId, ...newCase };
-};
+//   return { case_id: result.insertId, ...newCase };
+// };
 
-/**
- * Create Contact → Case(for that contact) → Deposit(for that case)
- */
-export const createContactCaseAndDepositRepository = async (
-  contact: ContactCreate
-) => {
-  const conn = await db.getConnection();
-  try {
-    await conn.beginTransaction();
+// /**
+//  * Create Contact → Case(for that contact) → Deposit(for that case)
+//  */
+// export const createContactCaseAndDepositRepository = async (
+//   contact: ContactCreate
+// ) => {
+//   const conn = await db.getConnection();
+//   try {
+//     await conn.beginTransaction();
 
-    // 1) Insert contact
-    const [contactRes] = await conn.query<ResultSetHeader>(
-      `INSERT INTO contacts 
-       (tel, full_name, contact_type, register_date, last_call_at, dob, last_call_status, personal_note, contact_line, create_at, update_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        contact.tel,
-        contact.full_name,
-        contact.contact_type,
-        contact.register_date,
-        contact.last_call_at,
-        contact.dob,
-        contact.last_call_status,
-        contact.personal_note,
-        contact.contact_line,
-        contact.create_at,
-        contact.update_at,
-      ]
-    );
-    const contact_id = contactRes.insertId;
+//     // 1) Insert contact
+//     const [contactRes] = await conn.query<ResultSetHeader>(
+//       `INSERT INTO contacts 
+//        (tel, full_name, contact_type, register_date, last_call_at, dob, last_call_status, personal_note, contact_line, create_at, update_at)
+//        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+//       [
+//         contact.tel,
+//         contact.full_name,
+//         contact.contact_type,
+//         contact.register_date,
+//         contact.last_call_at,
+//         contact.dob,
+//         contact.last_call_status,
+//         contact.personal_note,
+//         contact.contact_line,
+//         contact.create_at,
+//         contact.update_at,
+//       ]
+//     );
+//     const contact_id = contactRes.insertId;
 
-    // 2) Auto-create case
-    const casePayload: CreateCase = {
-      contact_id,
-      username_id: contact.username_id ?? null,
-      case_type: "deposit", // default type
-      case_description: "Auto-created case for new contact",
-      case_status: "pending",
-      priority: "normal",
-      create_at: contact.create_at,
-      update_at: contact.update_at,
-    };
-    const createdCase = await createCaseRepositoryTx(conn, casePayload);
-    const case_id = createdCase.case_id;
+//     // 2) Auto-create case
+//     const casePayload: CreateCase = {
+//       contact_id,
+//       username_id: contact.username_id ?? null,
+//       case_type: "deposit", // default type
+//       case_description: "Auto-created case for new contact",
+//       case_status: "pending",
+//       priority: "normal",
+//       create_at: contact.create_at,
+//       update_at: contact.update_at,
+//     };
+//     const createdCase = await createCaseRepositoryTx(conn, casePayload);
+//     const case_id = createdCase.case_id;
 
-    // 3) Auto-create deposit linked to case
-  const depositDate = contact.deposit_at ?? new Date(); // fallback to now if undefined
-  const [depRes] = await conn.query<ResultSetHeader>(
-    `INSERT INTO deposits (case_id, amount, deposit_at)
-    VALUES (?, ?, ?)`,
-    [
-      case_id,
-      0.0,            // default amount
-      depositDate,
-    ]
-  );
-  const deposit_id = depRes.insertId;
+//     // 3) Auto-create deposit linked to case
+//   const depositDate = contact.deposit_at ?? new Date(); // fallback to now if undefined
+//   const [depRes] = await conn.query<ResultSetHeader>(
+//     `INSERT INTO deposits (case_id, amount, deposit_at)
+//     VALUES (?, ?, ?)`,
+//     [
+//       case_id,
+//       0.0,            // default amount
+//       depositDate,
+//     ]
+//   );
+//   const deposit_id = depRes.insertId;
 
-    await conn.commit();
+//     await conn.commit();
 
-    // 4) Auto-assign case (outside transaction, safe)
-    try {
-      await autoAssignCase(case_id, "Auto-assigned by system");
-    } catch (e) {
-      console.error("autoAssignCase failed:", e);
-    }
+//     // 4) Auto-assign case (outside transaction, safe)
+//     try {
+//       await autoAssignCase(case_id, "Auto-assigned by system");
+//     } catch (e) {
+//       console.error("autoAssignCase failed:", e);
+//     }
 
-    return {
-      contact: { contact_id, ...contact },
-      case: { ...createdCase },
-      deposit: {
-        deposit_id,
-        case_id,
-        contact_id,
-        amount: 0.0,
-        status: "pending",
-      },
-    };
-  } catch (err) {
-    await conn.rollback();
-    throw err;
-  } finally {
-    conn.release();
-  }
-};
+//     return {
+//       contact: { contact_id, ...contact },
+//       case: { ...createdCase },
+//       deposit: {
+//         deposit_id,
+//         case_id,
+//         contact_id,
+//         amount: 0.0,
+//         status: "pending",
+//       },
+//     };
+//   } catch (err) {
+//     await conn.rollback();
+//     throw err;
+//   } finally {
+//     conn.release();
+//   }
+// };
 
 // UPDATE
 export const updateContactRepository = async (id: number, contact: Partial<ContactCreate>) => {
