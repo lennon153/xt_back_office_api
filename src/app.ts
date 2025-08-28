@@ -23,7 +23,7 @@ app.use(requestLogger);
 app.use("/api/v1", routes);
 
 // Auto check functions
-// dailyRotationTask
+dailyRotationTask
 
 // Global error handler (must be last)
 app.use(errorHandler);

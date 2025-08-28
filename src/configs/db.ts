@@ -17,6 +17,7 @@ interface DatabaseConfig {
   enableKeepAlive?: boolean;
   keepAliveInitialDelay?: number;
   timezone?: string;
+  charset?: string;
 }
 
 function getRequiredEnvVar(name: string): string {
@@ -39,7 +40,8 @@ function getDatabaseConfig(): DatabaseConfig {
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
-    timezone: 'UTC+7'
+    timezone: '+07:00', // Changed from 'UTC+7' to '+07:00' for MySQL
+    charset: 'utf8mb4'
   };
 }
 

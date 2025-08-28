@@ -189,7 +189,7 @@ export const unfreezeCasesTask = new AutoScheduler(
         c.case_id,
         c.username_id,
         systemToken,
-        "Reassigned after 60-day freeze expired"
+        "Reassigned after 60-day freeze expired" 
       );
       console.log(`🔄 Case ${c.case_id} unfrozen and reassigned`);
     }

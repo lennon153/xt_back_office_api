@@ -1,115 +1,136 @@
+import { db } from "../../configs/db";
+import { AutoScheduler } from "../autoScheduler";
 
-// import { db } from "../../configs/db";
-// import { AutoScheduler } from "../autoScheduler";
+// -------------------------------
+// Get least busy staff by role (telesales or crm)
+// -------------------------------
+const getNextStaff = async (role: string, excludeStaffIds: string[] = []) => {
+  if (!["telesales", "crm"].includes(role)) return null;
 
-// // -------------------------------
-// // Helper: Get least busy user (excluding current user)
-// // -------------------------------
-// const getNextStaff = async (excludeUserIds: string[] = []) => {
-//   const [rows] = await db.query(
-//     `SELECT us.id, COUNT(ca.assignment_id) AS total_cases
-//      FROM user us
-//      LEFT JOIN case_assignments ca ON us.id = ca.user_id
-//      ${excludeUserIds.length > 0 ? `WHERE us.id NOT IN (?)` : ""}
-//      GROUP BY us.id
-//      ORDER BY total_cases ASC
-//      LIMIT 1`,
-//     excludeUserIds.length > 0 ? [excludeUserIds] : []
-//   );
+  const [rows]: any = await db.query(
+    `SELECT s.id AS staff_id, s.name AS staff_name, COUNT(ca.assignment_id) AS total_cases
+     FROM staffs s
+     LEFT JOIN case_assignments ca ON s.id = ca.staff_id
+     WHERE s.role = ? ${excludeStaffIds.length ? `AND s.id NOT IN (?)` : ""} 
+     GROUP BY s.id
+     ORDER BY total_cases ASC
+     LIMIT 1`,
+    excludeStaffIds.length ? [role, excludeStaffIds] : [role]
+  );
 
-//   return (rows as any[])[0] || null;
-// };
+  if (!rows.length) return null;
+  return rows[0];
+};
 
-// // -------------------------------
-// // Auto-assign case to a user
-// // -------------------------------
-// const autoAssignCase = async (caseId: number, note?: string, excludeUserIds: string[] = []) => {
-//   const user = await getNextStaff(excludeUserIds);
-//   if (!user) throw new Error("No user available for assignment");
+// -------------------------------
+// Daily rotation task (7-day rotation, 3 rotations max → freeze)
+// -------------------------------
+export const dailyRotationTask = new AutoScheduler(
+  async () => {
+    const [cases]: any = await db.query(
+      `SELECT case_id, case_status, update_at, has_deposit, last_deposit, username_id, rotation_count
+       FROM cases
+       WHERE case_status IN ('pending','transferred')`
+    );
 
-//   const assignmentNote = note ?? "Auto-transfer by system";
-//   await db.query(
-//     `INSERT INTO case_assignments (case_id, user_id, assign_at, assignment_note)
-//      VALUES (?, ?, NOW(), ?)`,
-//     [caseId, user.user_id, assignmentNote]
-//   );
+    for (const c of cases) {
+      const lastDepositDays = c.last_deposit
+        ? Math.floor((Date.now() - new Date(c.last_deposit).getTime()) / (1000*60*60*24))
+        : Infinity;
+      if (lastDepositDays < 7) continue; // skip recent deposits
 
-//   console.log(`✅ Case ${caseId} assigned to user ${user.user_id}`);
-//   return user.user_id;
-// };
+      const daysSinceUpdate = Math.floor((Date.now() - new Date(c.update_at).getTime()) / (1000*60*60*24));
+      const role = c.has_deposit < 4 ? "telesales" : "crm";
 
-// // -------------------------------
-// // Daily Task: Rotate assignments every 7 days
-// // -------------------------------
-// export const dailyRotationTask = new AutoScheduler(
-//   async () => {
-//     console.log("🔍 Running 7-day rotation task...");
+      if (c.has_deposit > 0) continue; // keep current handler if deposit exists
 
-//     const [rows] = await db.query(
-//       `
-//       SELECT c.case_id, c.case_status, c.update_at
-//       FROM cases c
-//       WHERE c.case_status IN ('pending','transferred');
-//       `
-//     );
+      if (c.rotation_count < 3 && daysSinceUpdate >= 7) {
+        // Rotate to next staff
+        const [assignedRows]: any = await db.query(
+          `SELECT staff_id FROM case_assignments WHERE case_id = ? ORDER BY assign_at ASC`,
+          [c.case_id]
+        );
+        const excludeStaffIds = assignedRows.map((a: any) => a.staff_id);
+        const staff = await getNextStaff(role, excludeStaffIds);
 
-//     const cases = rows as { case_id: number; case_status: string; updatedAt: Date }[];
+        if (staff && staff.staff_id !== c.username_id) {
+          await db.query(
+            `INSERT INTO case_assignments (case_id, staff_id, assign_at, assignment_note)
+             VALUES (?, ?, NOW(), ?)`,
+            [c.case_id, staff.staff_id, `Rotation ${c.rotation_count + 1}`]
+          );
 
-//     for (const c of cases) {
-//       const daysSinceLastUpdate = Math.floor(
-//         (new Date().getTime() - new Date(c.updatedAt).getTime()) / (1000 * 60 * 60 * 24)
-//       );
+          await db.query(
+            `UPDATE cases 
+             SET username_id=?, rotation_count=rotation_count+1, case_status='transferred', update_at=NOW()
+             WHERE case_id=?`,
+            [staff.staff_id, c.case_id]
+          );
+        }
+      } else if (c.rotation_count >= 3) {
+        // Freeze after 3 rotations
+        await db.query(
+          `UPDATE cases SET case_status='freeze', update_at=NOW() WHERE case_id=?`,
+          [c.case_id]
+        );
+      }
+    }
+  },
+  {
+    cronTime: process.env.ROTATION_TASK_CRON || "0 7 * * *",
+    timeZone: "Asia/Phnom_Penh",
+  },
+  "Daily Rotation Task"
+);
 
-//       // Get previous assignments for this case
-//       const [assignments]: any = await db.query(
-//         `SELECT user_id FROM case_assignments WHERE case_id = ? ORDER BY assign_at ASC`,
-//         [c.case_id]
-//       );
-//       const assignedStaffIds = assignments.map((a: any) => a.user_id);
+// -------------------------------
+// Unfreeze frozen cases after 60 days
+// -------------------------------
+export const unfreezeCasesTask = new AutoScheduler(
+  async () => {
+    const [cases]: any = await db.query(
+      `SELECT case_id, username_id, has_deposit, last_deposit, rotation_count
+       FROM cases
+       WHERE case_status = 'freeze'
+         AND NOW() >= update_at + INTERVAL 60 DAY`
+    );
 
-//       if (daysSinceLastUpdate >= 7 && assignedStaffIds.length < 3) {
-//         // Rotate to next user
-//         await autoAssignCase(c.case_id, `Auto-transfer rotation #${assignedStaffIds.length + 1}`, assignedStaffIds);
-//         await db.query(`UPDATE cases SET case_status = 'transferred', update_at = NOW() WHERE case_id = ?`, [c.case_id]);
-//       } else if (assignedStaffIds.length >= 3) {
+    for (const c of cases) {
+      const lastDepositDays = c.last_deposit
+        ? Math.floor((Date.now() - new Date(c.last_deposit).getTime()) / (1000*60*60*24))
+        : Infinity;
+      if (lastDepositDays < 7) continue; // skip recent deposits
 
-//         // Freeze after 3 rotations (21 days)
-//         await db.query(`UPDATE cases SET case_status = 'frozen', update_at = NOW() WHERE case_id = ?`, [c.case_id]);
-//         console.log(`⏸ Case ${c.case_id} frozen after 21 days rotation`);
-//       }
-//     }
-//   },
-//   {
-//     cronTime: process.env.ROTATION_TASK_CRON || "0 7 * * *", // daily 7AM
-//     timeZone: "Asia/Phnom_Penh",
-//   },
-//   "DailyRotationTask"
-// );
+      const role = c.has_deposit < 4 ? "telesales" : "crm";
 
-// // -------------------------------
-// // Daily Task: Unfreeze frozen cases
-// // -------------------------------
-// export const unfreezeCasesTask = new AutoScheduler(
-//   async () => {
-//     console.log("🔍 Checking frozen cases to unfreeze...");
+      if (!c.username_id) {
+        const staff = await getNextStaff(role, []);
+        if (staff) {
+          await db.query(
+            `INSERT INTO case_assignments (case_id, staff_id, assign_at, assignment_note)
+             VALUES (?, ?, NOW(), ?)`,
+            [c.case_id, staff.staff_id, "Unfrozen after 60-day freeze"]
+          );
 
-//     const [rows] = await db.query(
-//       `SELECT case_id, update_at FROM cases
-//        WHERE case_status = 'frozen'
-//          AND NOW() >= update_at`
-//     );
-
-//     const frozenCases = rows as { case_id: number; updatedAt: Date }[];
-
-//     for (const c of frozenCases) {
-//       await db.query(`UPDATE cases SET case_status = 'pending', update_at = NOW() WHERE case_id = ?`, [c.case_id]);
-//       await autoAssignCase(c.case_id, "Reassigned after 60-day freeze expired");
-//       console.log(`🔄 Case ${c.case_id} unfrozen and reassigned`);
-//     }
-//   },
-//   {
-//     cronTime: process.env.UNFREEZE_TASK_CRON || "0 7 * * *",
-//     timeZone: "Asia/Phnom_Penh",
-//   },
-//   "UnfreezeCasesTask"
-// );
+          await db.query(
+            `UPDATE cases 
+             SET case_status='pending', username_id=?, rotation_count=0, update_at=NOW() 
+             WHERE case_id=?`,
+            [staff.staff_id, c.case_id]
+          );
+        }
+      } else {
+        // keep current handler if exists
+        await db.query(
+          `UPDATE cases SET case_status='pending', rotation_count=0, update_at=NOW() WHERE case_id=?`,
+          [c.case_id]
+        );
+      }
+    }
+  },
+  {
+    cronTime: process.env.UNFREEZE_TASK_CRON || "0 7 * * *",
+    timeZone: "Asia/Phnom_Penh",
+  },
+  "Unfreeze Cases Task After 60 Days"
+);

@@ -1,10 +1,12 @@
 import { HttpStatus } from "../constants/httpStatus";
-import { createCaseRepository, deleteCaseRepository, getCasesRepository, updateCaseRepository } from "../repository/case.repository"
+import { createAndAssignCaseRepository, createCaseRepository, deleteCaseRepository, getCasesRepository, updateCaseRepository } from "../repository/case.repository"
 import { CaseResponse, CreateCase, UpdateCase } from "../types/case.type";
 import { AppError } from "../utils/customError";
 import { formatDateHour } from "../utils/dateFormat";
 import { PaginateOptions, PaginationResult } from "../types/pagination.type";
 import { autoAssignCase } from "../utils/case/autoTransfer";
+import { CreateCaseAssInput } from "../validators/case.schema";
+
 
 
 export const createCaseService = async (
@@ -68,3 +70,7 @@ export const deleteCaseService = async (caseId: number) =>{
     }
     return {case_id: caseId};
 }
+
+export const createAndAssignCaseService = async (input: CreateCaseAssInput) => {
+  return await createAndAssignCaseRepository(input);
+};

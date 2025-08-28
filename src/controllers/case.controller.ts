@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { ApiResponse } from "../types/api.type";
-import { createCaseService, deleteCaseService,  getAllCasesService, updateCaseService } from "../services/case.service";
-import { createCaseSchema, updateCaseSchema } from "../validators/case.schema";
+import { createAndAssignCaseService, createCaseService, deleteCaseService,  getAllCasesService, updateCaseService } from "../services/case.service";
+import { createCaseAssSchema, createCaseSchema, updateCaseSchema } from "../validators/case.schema";
+import { ZodError } from "zod";
 
 
 export const createCaseController = async (req: Request, res: Response, next: NextFunction) => {
@@ -116,5 +117,50 @@ export const deleteCaseController = async (req: Request<{ id: string }>, res: Re
     return res.json({ success: true, message: "Case deleted successfully", data: deletedCase });
   } catch (err) {
     next(err);
+  }
+};
+
+
+export const createCaseAssController = async (
+  req: Request,
+  res: Response<ApiResponse>,
+  next: NextFunction
+) => {
+  try {
+    const input = createCaseAssSchema.parse(req.body);
+    const caseId = await createAndAssignCaseService(input);
+
+    return res.status(201).json({
+      success: true,
+      message: "Case created and assigned successfully",
+      data: { case_id: caseId },
+    });
+  } catch (err: any) {
+    // Validation errors
+    if (err instanceof ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        data: err.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      });
+    }
+
+    // Business errors
+    if (err.message === "Contact not found") {
+      return res.status(404).json({ success: false, message: "Contact not found" });
+    }
+    if (err.message === "User not found") {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    if (err.message === "Username not found") {
+      return res.status(404).json({ success: false, message: "Username not found" });
+    }
+
+    // Unexpected server error
+    console.error("Unexpected error:", err);
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };

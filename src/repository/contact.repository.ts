@@ -1,8 +1,7 @@
 import { PoolConnection, ResultSetHeader } from "mysql2";
 import {db} from "../configs/db";
 import { ContactCreate } from "../types/contact.type";
-import { CreateCase } from "../types/case.type";
-import { autoAssignCase } from "../utils/case/autoTransfer";
+
 
 export const getAllContactsRepository = async (
   page: number = 1,

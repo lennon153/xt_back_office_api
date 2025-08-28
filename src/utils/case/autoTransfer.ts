@@ -7,15 +7,16 @@ interface User {
 }
 
 // Find user with the least number of cases
-const getLeastBusyStaff = async (): Promise<User | null> => {
+export const getLeastBusyStaff = async (): Promise<User | null> => {
   const [rows] = await db.query(
     `
-        SELECT s.id, COUNT(ca.assignment_id) AS total_cases
-        FROM user s
-        LEFT JOIN case_assignments ca ON s.id = ca.user_id
-        GROUP BY s.id
-        ORDER BY total_cases ASC
-        LIMIT 1
+      SELECT s.id, s.name, COUNT(ca.assignment_id) AS total_cases
+      FROM user s
+      LEFT JOIN case_assignments ca ON s.id = ca.user_id
+      WHERE s.role IN ('telesales', 'crm')  -- only these roles
+      GROUP BY s.id
+      ORDER BY total_cases ASC
+      LIMIT 1
     `
   );
 
