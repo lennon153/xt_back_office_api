@@ -162,7 +162,11 @@ export const getUsernameByIdController = async (req: Request, res: Response<ApiR
     const id = Number(req.params.id);
     const username = await getUsernameByIdService(id);
     if (!username) return res.status(HttpStatus.NOT_FOUND).json({ success: false, message: "Username not found" });
-    return res.json({ success: true, data: username, message: "Username retrieved successfully" });
+    return res.json({
+      success: true, 
+      message: "Username retrieved successfully",
+      data: username, 
+    });
   } catch {
     return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ success: false, message: "Internal server error" });
   }

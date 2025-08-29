@@ -146,3 +146,12 @@ export const createAndAssignCaseRepository = async (
     conn.release();
   }
 };
+
+export const getCaseByIdRepository = async (id: number) =>{
+  const [rows]: any = await db.query(
+    `SELECT * FROM cases WHERE case_id = ?`,
+    [id]
+  )
+
+  return rows[0] || null;
+}

@@ -8,6 +8,7 @@ import callLogRoute from "./callLog.route";
 import usernameRoute from "./username.route";
 import contactCsvRoute from "./contact.csv.route";
 import depositRoute from "./deposit.route";
+import contactPointRoute from "./contactPoint.route";
 
 const router = Router();
 
@@ -19,6 +20,7 @@ router.use("/cases", caseRoute);
 router.use("/call-log", callLogRoute)
 router.use("/username", usernameRoute)
 router.use("/deposit", depositRoute)
+router.use("/contact-point", contactPointRoute)
 router.use("/contact-csv", contactCsvRoute)
 
 export default router;

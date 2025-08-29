@@ -247,6 +247,7 @@ export const createContactRepository = async (contact: ContactCreate) => {
 // };
 
 // UPDATE
+
 export const updateContactRepository = async (id: number, contact: Partial<ContactCreate>) => {
   const fields = Object.keys(contact);
   if (fields.length === 0) return null;

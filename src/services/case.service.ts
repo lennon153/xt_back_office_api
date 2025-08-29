@@ -1,5 +1,5 @@
 import { HttpStatus } from "../constants/httpStatus";
-import { createAndAssignCaseRepository, createCaseRepository, deleteCaseRepository, getCasesRepository, updateCaseRepository } from "../repository/case.repository"
+import { createAndAssignCaseRepository, createCaseRepository, deleteCaseRepository, getCaseByIdRepository, getCasesRepository, updateCaseRepository } from "../repository/case.repository"
 import { CaseResponse, CreateCase, UpdateCase } from "../types/case.type";
 import { AppError } from "../utils/customError";
 import { formatDateHour } from "../utils/dateFormat";
@@ -74,3 +74,8 @@ export const deleteCaseService = async (caseId: number) =>{
 export const createAndAssignCaseService = async (input: CreateCaseAssInput) => {
   return await createAndAssignCaseRepository(input);
 };
+
+export const getCaseByIdService = async(id: number) =>{
+  const cases =  await getCaseByIdRepository(id);
+  return cases
+}

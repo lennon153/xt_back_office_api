@@ -52,21 +52,23 @@ export const createDepositAndAutoCaseRepository = async (data: CreateDepositInpu
 
     // 5. Auto-create a new pending case for the same user
     const [newCaseResult]: any = await connection.query(
-      `INSERT INTO cases 
-          (contact_id, username_id, case_type, priority, case_description, case_status, last_deposit, has_deposit, create_at, update_at)
-      SELECT 
-          contact_id, 
-          username_id, 
-          case_type, 
-          priority, 
-          CONCAT(case_description, ' (new case)') AS case_description,
-          'pending' AS case_status,
-          NOW() AS last_deposit,
-          0 AS has_deposit,
-          NOW() AS create_at,
-          NOW() AS update_at
-      FROM cases 
-      WHERE case_id = ?`,
+      `
+        INSERT INTO cases 
+            (contact_id, username_id, case_type, priority, case_description, case_status, last_deposit, has_deposit, create_at, update_at)
+        SELECT 
+            contact_id, 
+            username_id, 
+            case_type, 
+            priority, 
+            CONCAT(case_description, ' (new case)') AS case_description,
+            'pending' AS case_status,
+            NOW() AS last_deposit,
+            0 AS has_deposit,
+            NOW() AS create_at,
+            NOW() AS update_at
+        FROM cases 
+        WHERE case_id = ?
+      `,
       [data.case_id]
     );
 
@@ -110,24 +112,24 @@ export const getAllDepositRepository = async (
 
   const [rows]: any = await db.query(
     `
-    SELECT 
-      d.deposit_id,
-      d.deposit_code,
-      d.amount,
-      d.currency,
-      d.deposit_at,
-      d.case_id,
-      s.id AS user_id,
-      s.name AS user_name,
-      c.contact_id,
-      c.full_name AS contact_name
-    FROM deposits d
-    LEFT JOIN user s ON d.user_id = s.id
-    LEFT JOIN cases ca ON d.case_id = ca.case_id
-    LEFT JOIN contacts c ON ca.contact_id = c.contact_id
-    ${whereClause}
-    ORDER BY d.deposit_at DESC
-    LIMIT ? OFFSET ?
+      SELECT 
+        d.deposit_id,
+        d.deposit_code,
+        d.amount,
+        d.currency,
+        d.deposit_at,
+        d.case_id,
+        s.id AS user_id,
+        s.name AS user_name,
+        c.contact_id,
+        c.full_name AS contact_name
+      FROM deposits d
+      LEFT JOIN user s ON d.user_id = s.id
+      LEFT JOIN cases ca ON d.case_id = ca.case_id
+      LEFT JOIN contacts c ON ca.contact_id = c.contact_id
+      ${whereClause}
+      ORDER BY d.deposit_at DESC
+      LIMIT ? OFFSET ?
     `,
     [...queryParams, limit, offset]
   );

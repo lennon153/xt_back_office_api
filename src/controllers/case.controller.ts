@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { ApiResponse } from "../types/api.type";
-import { createAndAssignCaseService, createCaseService, deleteCaseService,  getAllCasesService, updateCaseService } from "../services/case.service";
+import { createAndAssignCaseService, createCaseService, deleteCaseService,  getAllCasesService, getCaseByIdService, updateCaseService } from "../services/case.service";
 import { createCaseAssSchema, createCaseSchema, updateCaseSchema } from "../validators/case.schema";
 import { ZodError } from "zod";
+import { HttpStatus } from "../constants/httpStatus";
 
 
 export const createCaseController = async (req: Request, res: Response, next: NextFunction) => {
@@ -164,3 +165,18 @@ export const createCaseAssController = async (
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
+export const getCaseByIdController = async(req:Request, res:Response<ApiResponse<any>>, next: NextFunction)=>{
+  try{
+    const id = Number(req.params.id);
+    const cases = await getCaseByIdService(id);
+    if(!cases) return res.status(HttpStatus.NOT_FOUND).json({success:false, message:"Case not found"})
+      return res.json({
+        success:true,
+        message:"Get case by id successfully",
+        data:cases,
+    });
+  }catch(err){
+    next(err)
+  }
+}

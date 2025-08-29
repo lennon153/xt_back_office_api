@@ -187,7 +187,11 @@ export const updateContactController = async (req:Request<{id: string}>,res: Res
     const updated = await updateContactService(id,req.body);
     if(!updated) return res.status(HttpStatus.NOT_FOUND).json({success:false,message:"Contact not found"});
     
-    return res.json({success: true, message:"Contact updated successfully"})
+    return res.json({
+      success: true, 
+      message:"Contact updated successfully",
+      data: updated
+    })
   } catch(err){
     next(err)
   }

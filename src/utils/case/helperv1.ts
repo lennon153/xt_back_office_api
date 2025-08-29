@@ -26,72 +26,34 @@ const getNextUser = async (role: string, excludeUserIds: string[] = []) => {
 };
 
 // -------------------------------
-// Get deposit count from usernames table
-// -------------------------------
-const getDepositCount = async (usernameId: number): Promise<number> => {
-  const [rows]: any = await db.query(
-    `SELECT has_deposited FROM usernames WHERE username_id = ?`,
-    [usernameId]
-  );
-  
-  if (!rows.length) return 0;
-  return parseInt(rows[0].has_deposited) || 0;
-};
-
-// -------------------------------
-// Get last deposit date from usernames table
-// -------------------------------
-const getLastDepositDate = async (usernameId: number): Promise<Date | null> => {
-  const [rows]: any = await db.query(
-    `SELECT last_deposit FROM usernames WHERE username_id = ?`,
-    [usernameId]
-  );
-  
-  if (!rows.length || !rows[0].last_deposit) return null;
-  return new Date(rows[0].last_deposit);
-};
-
-// -------------------------------
 // Auto-assign case (respect current handler)
 // -------------------------------
 export const autoAssignCase = async (
   caseId: number,
-  currentUserId: number,
+  currentUserId: number, // user performing the action
   note?: string
 ) => {
   const [caseRows]: any = await db.query(
-    `SELECT username_id FROM cases WHERE case_id = ?`,
+    `SELECT has_deposit, last_deposit, username_id FROM cases WHERE case_id = ?`,
     [caseId]
   );
-  
   if (!caseRows.length) throw new Error("Case not found");
+
   const caseData = caseRows[0];
 
-  if (!caseData.username_id) {
-    throw new Error("Case has no username_id reference");
-  }
-
-  // Get deposit info from usernames table
-  const lastDeposit = await getLastDepositDate(caseData.username_id);
-  const hasDeposited = await getDepositCount(caseData.username_id);
-
-  // Only assign if last deposit > 7 days or no deposit
-  const lastDepositDays = lastDeposit
-    ? Math.floor((Date.now() - lastDeposit.getTime()) / (1000 * 60 * 60 * 24))
+  // Only assign if last deposit > 7 days
+  const lastDepositDays = caseData.last_deposit
+    ? Math.floor((Date.now() - new Date(caseData.last_deposit).getTime()) / (1000 * 60 * 60 * 24))
     : Infinity;
 
   if (lastDepositDays < 7) return null; // recent deposit, skip assignment
 
-  const role = hasDeposited < 4 ? "telesales" : "crm";
+  const role = caseData.has_deposit < 4 ? "telesales" : "crm";
 
-  // Check current handler
+  // Check current handler - FIXED: Use username_id from cases table
   if (caseData.username_id) {
-    const [currentUser]: any = await db.query(
-      `SELECT role FROM user WHERE user_id = ?`,
-      [caseData.username_id]
-    );
-    
-    // Keep current handler if they have the right role
+    const [currentUser]: any = await db.query(`SELECT role FROM user WHERE user_id = ?`, [caseData.username_id]);
+    // Only assign a new user if current handler is not available or wrong role
     if (currentUser.length && currentUser[0].role === role) {
       return caseData.username_id;
     }
@@ -113,10 +75,7 @@ export const autoAssignCase = async (
     [caseId, user.user_id, note ?? `Auto-assigned by system (${role})`]
   );
 
-  await db.query(
-    `UPDATE cases SET username_id = ?, update_at = NOW() WHERE case_id = ?`,
-    [user.user_id, caseId]
-  );
+  await db.query(`UPDATE cases SET username_id = ?, update_at = NOW() WHERE case_id = ?`, [user.user_id, caseId]);
 
   return user.user_id;
 };
@@ -127,42 +86,30 @@ export const autoAssignCase = async (
 export const dailyRotationTask = new AutoScheduler(
   async () => {
     const [rows]: any = await db.query(
-      `SELECT c.case_id, c.case_status, c.update_at, c.username_id
+      `SELECT c.case_id, c.case_status, c.update_at, c.has_deposit, c.last_deposit, c.username_id
        FROM cases c
-       WHERE c.case_status IN ('pending','transferred')`
+       WHERE c.case_status IN ('pending','transferred')
+         AND c.has_deposit = 0` // Only rotate cases with no deposits
     );
 
     for (const c of rows) {
-      if (!c.username_id) continue;
-
-      // Get deposit info from usernames table
-      const lastDeposit = await getLastDepositDate(c.username_id);
-      const hasDeposited = await getDepositCount(c.username_id);
-
-      // Skip if recent deposit (within 7 days)
-      const lastDepositDays = lastDeposit
-        ? Math.floor((Date.now() - lastDeposit.getTime()) / (1000 * 60 * 60 * 24))
-        : Infinity;
-
-      if (lastDepositDays < 7) continue;
-
-      const daysSinceUpdate = Math.floor((Date.now() - new Date(c.update_at).getTime()) / (1000 * 60 * 60 * 24));
+      const daysSinceLastUpdate = Math.floor((Date.now() - new Date(c.update_at).getTime()) / (1000 * 60 * 60 * 24));
       
-      // Skip if updated recently
-      if (daysSinceUpdate < 7) continue;
+      // Skip if case was updated in the last 7 days
+      if (daysSinceLastUpdate < 7) continue;
 
-      const role = hasDeposited < 4 ? "telesales" : "crm";
+      const userRole = "telesales"; // All no-deposit cases go to telesales
 
-      // Get all previously assigned users
+      // Get all previously assigned users for this case
       const [assignedRows]: any = await db.query(
         `SELECT user_id FROM case_assignments WHERE case_id = ? ORDER BY assign_at ASC`,
         [c.case_id]
       );
       const assignedUserIds = assignedRows.map((r: any) => r.user_id);
 
-      if (daysSinceUpdate >= 7 && daysSinceUpdate < 21) {
-        // Rotate to next user
-        const user = await getNextUser(role, assignedUserIds);
+      if (daysSinceLastUpdate >= 7 && daysSinceLastUpdate < 21) {
+        // Rotate to next available user
+        const user = await getNextUser(userRole, assignedUserIds);
         if (user && user.user_id !== c.username_id) {
           await db.query(
             `INSERT INTO case_assignments (case_id, user_id, assign_at, assignment_note)
@@ -174,7 +121,7 @@ export const dailyRotationTask = new AutoScheduler(
             [user.user_id, c.case_id]
           );
         }
-      } else if (daysSinceUpdate >= 21) {
+      } else if (daysSinceLastUpdate >= 21) {
         // Freeze after 21 days no activity
         await db.query(
           `UPDATE cases SET case_status = 'freeze', update_at = NOW() WHERE case_id = ?`,
@@ -196,29 +143,23 @@ export const dailyRotationTask = new AutoScheduler(
 export const unfreezeCasesTask = new AutoScheduler(
   async () => {
     const [rows]: any = await db.query(
-      `SELECT c.case_id, c.username_id, c.update_at
+      `SELECT c.case_id, c.username_id, c.has_deposit, c.last_deposit, c.update_at
        FROM cases c
        WHERE c.case_status = 'freeze'
          AND DATE_ADD(c.update_at, INTERVAL 60 DAY) <= NOW()`
     );
 
     for (const c of rows) {
-      if (!c.username_id) continue;
-
-      // Get deposit info from usernames table
-      const lastDeposit = await getLastDepositDate(c.username_id);
-      const hasDeposited = await getDepositCount(c.username_id);
-
-      // Skip if recent deposit
-      const lastDepositDays = lastDeposit
-        ? Math.floor((Date.now() - lastDeposit.getTime()) / (1000 * 60 * 60 * 24))
+      const daysSinceLastDeposit = c.last_deposit
+        ? Math.floor((Date.now() - new Date(c.last_deposit).getTime()) / (1000 * 60 * 60 * 24))
         : Infinity;
+      
+      // Skip if recent deposit (within 7 days)
+      if (daysSinceLastDeposit < 7) continue;
 
-      if (lastDepositDays < 7) continue;
-
-      const role = hasDeposited < 4 ? "telesales" : "crm";
-
-      // Get all previously assigned users
+      const role = c.has_deposit < 4 ? "telesales" : "crm";
+      
+      // Get all previously assigned users to avoid reassigning to same users
       const [assignedRows]: any = await db.query(
         `SELECT user_id FROM case_assignments WHERE case_id = ?`,
         [c.case_id]
