@@ -11,34 +11,38 @@ export const createUsernameRepository = async (
     last_deposit?: Date;
   }
 ) => {
+  const connection = await db.getConnection();
+  await connection.beginTransaction();
+
   const now = new Date();
 
-  // Check platform_id exists
-  if (newUsername.platform_id !== undefined && newUsername.platform_id !== null) {
-    const [platformCheck]: any = await db.query(
-      "SELECT platform_id FROM platforms WHERE platform_id = ?",
-      [newUsername.platform_id]
-    );
-    if (!platformCheck || platformCheck.length === 0) {
-      throw new Error(`Platform with ID ${newUsername.platform_id} does not exist`);
-    }
-  }
-
-  // Check contact_id exists
-  if (newUsername.contact_id !== undefined && newUsername.contact_id !== null) {
-    const [contactCheck]: any = await db.query(
-      "SELECT contact_id FROM contacts WHERE contact_id = ?",
-      [newUsername.contact_id]
-    );
-    if (!contactCheck || contactCheck.length === 0) {
-      throw new Error(`Contact with ID ${newUsername.contact_id} does not exist`);
-    }
-  }
-
   try {
-    const [result]: any = await db.query(
+    // ✅ Check platform_id exists
+    if (newUsername.platform_id !== undefined && newUsername.platform_id !== null) {
+      const [platformCheck]: any = await connection.query(
+        "SELECT platform_id FROM platforms WHERE platform_id = ?",
+        [newUsername.platform_id]
+      );
+      if (!platformCheck || platformCheck.length === 0) {
+        throw new Error(`Platform with ID ${newUsername.platform_id} does not exist`);
+      }
+    }
+
+    // ✅ Check contact_id exists
+    if (newUsername.contact_id !== undefined && newUsername.contact_id !== null) {
+      const [contactCheck]: any = await connection.query(
+        "SELECT contact_id FROM contacts WHERE contact_id = ?",
+        [newUsername.contact_id]
+      );
+      if (!contactCheck || contactCheck.length === 0) {
+        throw new Error(`Contact with ID ${newUsername.contact_id} does not exist`);
+      }
+    }
+
+    // ✅ Insert username
+    const [result]: any = await connection.query(
       `INSERT INTO usernames 
-       (
+        (
           contact_id, 
           platform_id, 
           username, 
@@ -48,7 +52,7 @@ export const createUsernameRepository = async (
           has_deposited, 
           last_deposit, 
           vip_level
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newUsername.contact_id,
         newUsername.platform_id ?? null,
@@ -61,15 +65,22 @@ export const createUsernameRepository = async (
         newUsername.vip_level,
       ]
     );
+
+    await connection.commit();
     return result.insertId;
   } catch (err: any) {
-    // Catch duplicate entry error
+    await connection.rollback();
+
+    // ✅ Handle duplicate username
     if (err.code === "ER_DUP_ENTRY") {
       throw new Error(
         `Username '${newUsername.username}' already exists for platform ID ${newUsername.platform_id}`
       );
     }
+
     throw err;
+  } finally {
+    connection.release();
   }
 };
 

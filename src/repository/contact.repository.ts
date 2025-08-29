@@ -112,27 +112,40 @@ export const getContactDetailByIdRepository = async (contactId: number) => {
 };
 
 export const createContactRepository = async (contact: ContactCreate) => {
-  const [result] = await db.query<ResultSetHeader>(
-    `INSERT INTO contacts 
-     (tel, full_name, contact_type, register_date, last_call_at, dob, last_call_status, personal_note, contact_line, create_at, update_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      contact.tel,
-      contact.full_name,
-      contact.contact_type,
-      contact.register_date,
-      contact.last_call_at,
-      contact.dob,
-      contact.last_call_status,
-      contact.personal_note,
-      contact.contact_line,
-      contact.create_at,
-      contact.update_at,
-    ]
-  );
+  const connection = await db.getConnection();
+  await connection.beginTransaction();
 
-  return { id: result.insertId, ...contact };
+  try {
+    const [result] = await connection.query<ResultSetHeader>(
+      `INSERT INTO contacts 
+        (tel, full_name, contact_type, register_date, last_call_at, dob, last_call_status, personal_note, contact_line, create_at, update_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        contact.tel,
+        contact.full_name,
+        contact.contact_type,
+        contact.register_date,
+        contact.last_call_at,
+        contact.dob,
+        contact.last_call_status,
+        contact.personal_note,
+        contact.contact_line,
+        contact.create_at,
+        contact.update_at,
+      ]
+    );
+
+    await connection.commit();
+
+    return { id: result.insertId, ...contact };
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
 };
+
 
 /**
  * Transaction-aware version of createCaseRepository

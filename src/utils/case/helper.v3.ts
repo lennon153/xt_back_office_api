@@ -11,14 +11,16 @@ const getNextUser = async (role: string, excludeUserIds: string[] = []) => {
   }
 
   const [rows]: any = await db.query(
-    `SELECT u.id AS user_id, u.name AS user_name, COUNT(ca.assignment_id) AS total_cases
-     FROM user u
-     LEFT JOIN case_assignments ca ON u.id = ca.user_id
-     WHERE u.role = ? AND u.banned = 0 
-     ${excludeUserIds.length ? `AND u.id NOT IN (?)` : ""}
-     GROUP BY u.id
-     ORDER BY total_cases ASC
-     LIMIT 1`,
+    `
+      SELECT u.id AS user_id, u.name AS user_name, COUNT(ca.assignment_id) AS total_cases
+      FROM user u
+      LEFT JOIN case_assignments ca ON u.id = ca.user_id
+      WHERE u.role = ? AND u.banned = 0 
+      ${excludeUserIds.length ? `AND u.id NOT IN (?)` : ""}
+      GROUP BY u.id
+      ORDER BY total_cases ASC
+      LIMIT 1
+     `,
     excludeUserIds.length ? [role, excludeUserIds] : [role]
   );
 

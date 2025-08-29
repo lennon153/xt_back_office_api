@@ -51,6 +51,13 @@ export const createContactPointController = async (
       });
     }
 
+    if (err.message.startsWith("Duplicate entry")) {
+      return res.status(409).json({
+        success: false,
+        message: err.message, // e.g., "Duplicate entry 'email-user@example.com' for key 'contact_points.uq_contact_point'"
+      });
+    }
+
     // 6. Fallback: unexpected server error
     console.error("Unexpected error:", err);
     return res.status(500).json({
@@ -59,6 +66,8 @@ export const createContactPointController = async (
     });
   }
 };
+
+
 export const getAllContactPointController = async (
   req: Request,
   res: Response<ApiResponse<any>>,

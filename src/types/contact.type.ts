@@ -80,7 +80,8 @@ export interface PaginatedContacts {
 export interface CallLogDetail {
   call_id: number;
   point_id: number;
-  user_id: number;
+  id: number;
+  name:string;
   call_status:
     | "no_answer"
     | "connected_declined"

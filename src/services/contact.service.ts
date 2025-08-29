@@ -111,7 +111,8 @@ export const getContactDetailService = async (contactId: number) => {
       callLogMap.set(row.call_id, {
         call_id: row.call_id,
         point_id: row.point_id ?? 0,
-        user_id: row.staff_id ?? 0,
+        id: row.id ?? 0,
+        name:row.name,
         call_status: row.call_status ?? "no_answer",
         call_start_at: row.call_start_at ? formatDateHour(new Date(row.call_start_at)) : null,
         call_end_at: row.call_end_at ? formatDateHour(new Date(row.call_end_at)) : null,

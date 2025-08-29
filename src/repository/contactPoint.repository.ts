@@ -6,46 +6,59 @@ import { CreateContactPointInput } from "../validators/contactPoint.schema";
 
 // Create contact point
 export const createContactPointRepository = async (input: CreateContactPointInput) => {
-  // 1. Validate contact exists
-  const [contactRows]: any = await db.query(
-    `SELECT contact_id FROM contacts WHERE contact_id = ?`,
-    [input.contact_id]
-  );
+  const connection = await db.getConnection();
+  await connection.beginTransaction();
 
-  if (!contactRows.length) {
-    throw new Error("Contact not found");
+  try {
+    // 1. Validate contact
+    const [contactRows]: any = await connection.query(
+      `SELECT contact_id FROM contacts WHERE contact_id = ?`,
+      [input.contact_id]
+    );
+    if (!contactRows.length) throw new Error("Contact not found");
+
+    // 2. Validate channel_code
+    const [channelRows]: any = await connection.query(
+      `SELECT channel_code FROM contact_channels WHERE channel_code = ?`,
+      [input.channel_code]
+    );
+    if (!channelRows.length) throw new Error(`Invalid channel_code: ${input.channel_code}`);
+
+    // 3. Insert contact point
+    const [result]: any = await connection.query(
+      `INSERT INTO contact_points 
+        (contact_id, channel_code, value_raw, value_norm, is_primary, verify_at, create_at, update_at)
+       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        input.contact_id,
+        input.channel_code,
+        input.value_raw,
+        input.value_norm,
+        input.is_primary ? 1 : 0,
+        input.verify_at ?? null,
+      ]
+    );
+
+    await connection.commit();
+
+    return {
+      point_id: result.insertId,
+      ...input,
+      is_primary: input.is_primary ? 1 : 0,
+    };
+  } catch (err: any) {
+    await connection.rollback();
+
+    if (err.code === "ER_DUP_ENTRY") {
+      throw new Error(
+        `Duplicate entry '${input.channel_code}-${input.value_norm}' for key 'contact_points.uq_contact_point'`
+      );
+    }
+
+    throw err;
+  } finally {
+    connection.release();
   }
-
-  // 2. Validate channel_code exists
-  const [channelRows]: any = await db.query(
-    `SELECT channel_code FROM contact_channels WHERE channel_code = ?`,
-    [input.channel_code]
-  );
-
-  if (!channelRows.length) {
-    throw new Error(`Invalid channel_code: ${input.channel_code}`);
-  }
-
-  // 3. Insert contact point
-  const [result]: any = await db.query(
-    `INSERT INTO contact_points 
-      (contact_id, channel_code, value_raw, value_norm, is_primary, verify_at, create_at, update_at)
-     VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-    [
-      input.contact_id,
-      input.channel_code,
-      input.value_raw,
-      input.value_norm,
-      input.is_primary ? 1 : 0,
-      input.verify_at ?? null,
-    ]
-  );
-
-  return {
-    point_id: result.insertId,
-    ...input,
-    is_primary: input.is_primary ? 1 : 0,
-  };
 };
 
 // Get All contact points
@@ -126,10 +139,10 @@ export const updateContactPointRepository = async (
 // -----------------------
 // Delete
 // -----------------------
-export const deleteContactPointRepository = async (contactPointId: number) => {
+export const deleteContactPointRepository = async (pointId: number) => {
   const [result]: any = await db.query(
     `DELETE FROM contact_points WHERE point_id = ?`,
-    [contactPointId]
+    [pointId]
   );
 
   // Check if any row was deleted
@@ -138,7 +151,7 @@ export const deleteContactPointRepository = async (contactPointId: number) => {
   }
 
   return {
-    point_id: contactPointId,
+    point_id: pointId,
   };
 }
 

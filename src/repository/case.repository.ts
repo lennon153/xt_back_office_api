@@ -103,8 +103,8 @@ export const createAndAssignCaseRepository = async (
     // 3. Insert case with default last_deposit and has_deposit
     const [insertCaseResult]: any = await conn.query(
       `INSERT INTO cases 
-        (contact_id, username_id, case_type, transaction_code, last_deposit, has_deposit, case_description, priority)
-       VALUES (?, ?, ?, ?, NOW(), 0, ?, ?)`,
+        (contact_id, username_id, case_type, transaction_code, case_description, priority)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         input.contact_id,
         input.username_id ?? null,
