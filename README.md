@@ -167,5 +167,7 @@ Run the test suite with:
     Implement rate limiting
 
     Add monitoring and logging examples
+    
+![alt text](deepseek_mermaid_20250830_396d81.png)
 
 Happy coding! 🎉
