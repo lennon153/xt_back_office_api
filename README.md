@@ -17,7 +17,8 @@ Environment Configuration - Secure management of environment variables
 
 🏗️ Project Structure
 
-# **    src/
+# **    
+    src/
     ├── configs/          # Application configuration files
     ├── constants/        # Constant values used across the application
     ├── controllers/      # Route handlers and business logic
@@ -78,13 +79,13 @@ Environment Variables
 ```markdown
 **    Create a .env file based on .env.example with your specific configuration:
 
-$$
+
+# **  
     NODE_ENV=development
     PORT=3000
     DATABASE_URL=your_database_connection_string
     JWT_SECRET=your_jwt_secret_key
     API_PREFIX=/api/v1
-$$
 
 
     Database Migrations
