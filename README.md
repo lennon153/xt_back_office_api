@@ -50,15 +50,14 @@ Installation
     cp .env.example .env
     # Edit .env with your configuration
 4-Build the project
-    npm run build
-
-    Running the Application
+**    npm run build
+    Running the Application**
 5-Development mode with hot reload:
-    npm run dev
+**    npm run dev**
 
 6-Production mode:
-    npm start
-
+**    npm start
+**
 7-Using Docker:
 
     docker-compose up --build
@@ -78,11 +77,16 @@ Installation
 Environment Variables
 ```markdown
 **    Create a .env file based on .env.example with your specific configuration:
+
+$$
     NODE_ENV=development
     PORT=3000
     DATABASE_URL=your_database_connection_string
     JWT_SECRET=your_jwt_secret_key
     API_PREFIX=/api/v1
+$$
+
+
     Database Migrations
     The project includes a migration system for database schema management:
     # Create a new migration
