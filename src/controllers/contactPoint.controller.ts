@@ -110,9 +110,9 @@ export const updateContactPointController = async (
   next: NextFunction
 ) => {
   try {
-    const contactPointId = Number(req.params.id);
+    const pointId = Number(req.params.id);
 
-    if (isNaN(contactPointId) || contactPointId <= 0) {
+    if (isNaN(pointId) || pointId <= 0) {
       return res.status(400).json({
         success: false,
         message: "Invalid contact point ID",
@@ -132,7 +132,7 @@ export const updateContactPointController = async (
     const parsed: ContactPointUpdate = parsedResult.data;
 
     // 2. Call service to update
-    const updated = await updateContactPointService(contactPointId, parsed);
+    const updated = await updateContactPointService(pointId, parsed);
 
     // 3. Return success response
     return res.json({
@@ -141,6 +141,7 @@ export const updateContactPointController = async (
       data: updated,
     });
   } catch (err: any) {
+    
     // 4. Handle known errors from repository/service
     if (err.message === "Contact not found") {
       return res.status(404).json({
@@ -181,16 +182,16 @@ export const deleteContactPointController = async (
   next: NextFunction
 ) => {
   try {
-    const contactPointId = Number(req.params.id);
+    const pointId = Number(req.params.id);
 
-    if (isNaN(contactPointId) || contactPointId <= 0) {
+    if (isNaN(pointId) || pointId <= 0) {
       return res.status(400).json({
         success: false,
         message: "Invalid contact point ID",
       });
     }
 
-    const deleted = await deleteContactPointService(contactPointId);
+    const deleted = await deleteContactPointService(pointId);
 
     return res.json({
       success: true,

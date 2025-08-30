@@ -129,25 +129,47 @@ export const autoAssignCase = async (
 // -------------------------------
 export const dailyRotationTask = new AutoScheduler(
   async () => {
-    console.log("🚀 Starting daily rotation task...");
+    console.log("🚀 Starting daily rotation task (7-day per user)...");
 
-    // Get all active cases that need processing
+    // Get all active cases and their current assignment duration
     const [rows]: any = await db.query(
-      `SELECT c.case_id, c.case_status, c.update_at, c.username_id
+      `SELECT 
+         c.case_id, 
+         c.case_status, 
+         ca.assign_at as current_assignment_date
        FROM cases c
+       JOIN case_assignments ca ON c.case_id = ca.case_id
        WHERE c.case_status IN ('pending','transferred')
-         AND c.username_id IS NOT NULL`
+         AND ca.assignment_id = (
+           SELECT MAX(assignment_id) 
+           FROM case_assignments 
+           WHERE case_id = c.case_id
+         )`
     );
 
-    console.log(`📊 Found ${rows.length} cases to process`);
+    console.log(`📊 Found ${rows.length} active cases to check`);
 
     for (const c of rows) {
       try {
-        // Get deposit info from usernames table
-        const lastDeposit = await getLastDepositDate(c.username_id);
-        const hasDeposited = await getDepositCount(c.username_id);
+        // Calculate how long current user has handled this case
+        const assignmentDays = Math.floor(
+          (Date.now() - new Date(c.current_assignment_date).getTime()) / 
+          (1000 * 60 * 60 * 24)
+        );
 
-        // Skip if recent deposit (within 7 days)
+        console.log(`📅 Case ${c.case_id} - User ${c.user_id} has handled for ${assignmentDays} days`);
+
+        // Skip if not yet 7 days
+        if (assignmentDays < 7) {
+          console.log(`⏭️ Skipping case ${c.case_id} - only ${assignmentDays} days with current user`);
+          continue;
+        }
+
+        // Get deposit info to determine required role
+        const lastDeposit = await getLastDepositDate(c.user_id);
+        const hasDeposited = await getDepositCount(c.user_id);
+
+        // Skip if recent deposit (within 7 days) - customer is active
         const lastDepositDays = lastDeposit
           ? Math.floor((Date.now() - lastDeposit.getTime()) / (1000 * 60 * 60 * 24))
           : Infinity;
@@ -157,48 +179,36 @@ export const dailyRotationTask = new AutoScheduler(
           continue;
         }
 
-        const daysSinceUpdate = Math.floor((Date.now() - new Date(c.update_at).getTime()) / (1000 * 60 * 60 * 24));
-        
-        // Skip if updated recently
-        if (daysSinceUpdate < 7) {
-          console.log(`⏭️ Skipping case ${c.case_id} - updated recently (${daysSinceUpdate} days ago)`);
-          continue;
-        }
-
         const role = hasDeposited < 4 ? "telesales" : "crm";
 
-        // Get all previously assigned users
+        // Get all previously assigned users for this case
         const [assignedRows]: any = await db.query(
           `SELECT user_id FROM case_assignments WHERE case_id = ? ORDER BY assign_at ASC`,
           [c.case_id]
         );
         const assignedUserIds = assignedRows.map((r: any) => r.user_id);
 
-        if (daysSinceUpdate >= 7 && daysSinceUpdate < 21) {
-          // Rotate to next user
-          console.log(`🔄 Rotating case ${c.case_id} (${daysSinceUpdate} days inactive)`);
-          
-          const user = await getNextUser(role, assignedUserIds);
-          if (user && user.user_id !== c.username_id) {
-            await db.query(
-              `INSERT INTO case_assignments (case_id, user_id, assign_at, assignment_note)
-               VALUES (?, ?, NOW(), ?)`,
-              [c.case_id, user.user_id, `7-day rotation after ${daysSinceUpdate} days inactivity`]
-            );
-            await db.query(
-              `UPDATE cases SET case_status = 'transferred', username_id = ?, update_at = NOW() WHERE case_id = ?`,
-              [user.user_id, c.case_id]
-            );
-            console.log(`✅ Case ${c.case_id} rotated to user ${user.user_id}`);
-          }
-        } else if (daysSinceUpdate >= 21) {
-          // Freeze after 21 days no activity
-          console.log(`❄️ Freezing case ${c.case_id} (${daysSinceUpdate} days inactive)`);
+        // Find next available user
+        const user = await getNextUser(role, assignedUserIds);
+        
+        if (user && user.user_id !== c.user_id) {
+          // Rotate to new user
           await db.query(
-            `UPDATE cases SET case_status = 'freeze', update_at = NOW() WHERE case_id = ?`,
-            [c.case_id]
+            `INSERT INTO case_assignments (case_id, user_id, assign_at, assignment_note)
+             VALUES (?, ?, NOW(), ?)`,
+            [c.case_id, user.user_id, `7-day rotation: Previous user handled for ${assignmentDays} days`]
           );
+          
+          await db.query(
+            `UPDATE cases SET case_status = 'transferred', user_id = ?, update_at = NOW() WHERE case_id = ?`,
+            [user.user_id, c.case_id]
+          );
+          
+          console.log(`✅ Case ${c.case_id} rotated from user ${c.user_id} to user ${user.user_id} after ${assignmentDays} days`);
+        } else {
+          console.log(`ℹ️ No available user found for case ${c.case_id} or same user assigned`);
         }
+
       } catch (error) {
         console.error(`❌ Error processing case ${c.case_id}:`, error);
       }
@@ -210,7 +220,7 @@ export const dailyRotationTask = new AutoScheduler(
     cronTime: process.env.ROTATION_TASK_CRON || "0 7 * * *",
     timeZone: "Asia/Phnom_Penh",
   },
-  "Daily Rotation Task"
+  "Daily Rotation Task (7-day per user)"
 );
 
 // -------------------------------

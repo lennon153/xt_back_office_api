@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { createContactPointController, deleteContactPointController, getAllContactPointController, updateContactPointController } from "../controllers/contactPoint.controller";
-import { deleteContactController } from "../controllers/contact.controller";
 
 const contactPointRoute = Router();
 
