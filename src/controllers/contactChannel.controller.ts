@@ -6,7 +6,6 @@ import { createContactChannelService, deleteContactChannelService, getAllContact
 import { ZodError } from "zod";
 
 // Create
-
 export const createContactChannelController = async (
   req: Request,
   res: Response<ApiResponse<any>>,
@@ -43,6 +42,7 @@ export const createContactChannelController = async (
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
 // Gat all
 export const getAllContactChannelsController = async (
   req: Request,
@@ -127,7 +127,6 @@ export const updateContactChannelController = async (
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
-
 
 // Delete
 export const deleteContactChannelController = async (

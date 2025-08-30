@@ -8,7 +8,9 @@ import { autoAssignCase } from "../utils/case/autoTransfer";
 import { CreateCaseAssInput } from "../validators/case.schema";
 
 
-
+// -----------------------
+// Create
+// -----------------------
 export const createCaseService = async (
   caseData: Omit<CreateCase, "create_at" | "update_at">
 ) => {
@@ -29,9 +31,9 @@ export const createCaseService = async (
   return createdCase;
 };
 
-
-
-
+// -----------------------
+// Get All
+// -----------------------
 export async function getAllCasesService(
   options: PaginateOptions
 ): Promise<PaginationResult<CaseResponse>> {
@@ -49,6 +51,9 @@ export async function getAllCasesService(
   };
 }
 
+// -----------------------
+// Update
+// -----------------------
 export const updateCaseService = async (
   caseId: number,
   updatedCase: UpdateCase
@@ -62,7 +67,9 @@ export const updateCaseService = async (
   return { case_id: caseId, ...updatedCase };
 }
 
-
+// -----------------------
+// Delete
+// -----------------------
 export const deleteCaseService = async (caseId: number) =>{
     const result = await deleteCaseRepository(caseId);
     if(result.affectedRows=== 0){
@@ -71,10 +78,16 @@ export const deleteCaseService = async (caseId: number) =>{
     return {case_id: caseId};
 }
 
+// -----------------------
+// Create with assign case
+// -----------------------
 export const createAndAssignCaseService = async (input: CreateCaseAssInput) => {
   return await createAndAssignCaseRepository(input);
 };
 
+// -----------------------
+// Get By Id
+// -----------------------
 export const getCaseByIdService = async(id: number) =>{
   const cases =  await getCaseByIdRepository(id);
   return cases

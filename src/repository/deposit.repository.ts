@@ -1,6 +1,7 @@
 import { db } from "../configs/db";
 import { CreateDepositInput } from "../validators/deposit.schema";
 
+// Create
 export const createDepositAndAutoCaseRepository = async (data: CreateDepositInput) => {
   const connection = await db.getConnection();
 
@@ -94,7 +95,7 @@ export const createDepositAndAutoCaseRepository = async (data: CreateDepositInpu
   }
 };
 
-
+// Get All
 export const getAllDepositRepository = async (
   page: number = 1,
   limit: number = 20,
@@ -158,4 +159,180 @@ export const getAllDepositRepository = async (
       hasPrevious: page > 1,
     },
   };
-}
+};
+
+// Update 
+export const updateDepositAndCaseRepository = async (
+  depositId: number,
+  data: Partial<CreateDepositInput>
+) => {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // 1. Check if deposit exists
+    const [depositRows]: any = await connection.query(
+      `SELECT deposit_id, case_id, user_id FROM deposits WHERE deposit_id = ? LIMIT 1`,
+      [depositId]
+    );
+    if (!depositRows.length) throw new Error(`Deposit with id ${depositId} not found`);
+    const depositData = depositRows[0];
+
+    // 2. Check if case exists (we need to check if the deposit case exists)
+    const [caseRows]: any = await connection.query(
+      `SELECT case_id, has_deposit FROM cases WHERE case_id = ? LIMIT 1`,
+      [depositData.case_id]
+    );
+    if (!caseRows.length) throw new Error(`Case with id ${depositData.case_id} not found`);
+    const caseData = caseRows[0];
+
+    // 3. If deposit is updated, we reapply the changes
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+
+    if (data.amount !== undefined) {
+      updateFields.push("amount = ?");
+      updateValues.push(data.amount);
+    }
+
+    if (data.currency !== undefined) {
+      updateFields.push("currency = ?");
+      updateValues.push(data.currency);
+    }
+
+    if (data.deposit_code !== undefined) {
+      updateFields.push("deposit_code = ?");
+      updateValues.push(data.deposit_code);
+    }
+
+    if (data.deposit_at !== undefined) {
+      updateFields.push("deposit_at = ?");
+      updateValues.push(data.deposit_at);
+    }
+
+    updateValues.push(depositId);
+
+    if (updateFields.length === 0) {
+      throw new Error("No valid fields provided for update");
+    }
+
+    const query = `UPDATE deposits SET ${updateFields.join(", ")} WHERE deposit_id = ?`;
+    const [updateResult]: any = await connection.query(query, updateValues);
+
+    if (updateResult.affectedRows === 0) {
+      throw new Error(`Failed to update deposit with id ${depositId}`);
+    }
+
+    // 4. Update case status if deposit amount changed
+    if (data.amount) {
+      await connection.query(
+        `UPDATE cases 
+         SET last_deposit = NOW(),
+             has_deposit = IFNULL(has_deposit, 0) + 1,
+             update_at = NOW(),
+             case_status = "closed"
+         WHERE case_id = ?`,
+        [depositData.case_id]
+      );
+    }
+
+    await connection.commit();
+
+    return {
+      deposit_id: depositId,
+      ...data,
+    };
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+};
+
+//Delete
+export const deleteDepositAndCaseRepository = async (depositId: number) => {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // 1. Get deposit details before deletion
+    const [depositRows]: any = await connection.query(
+      `SELECT case_id, deposit_at, amount, currency FROM deposits WHERE deposit_id = ? LIMIT 1`,
+      [depositId]
+    );
+    if (!depositRows.length) throw new Error(`Deposit with id ${depositId} not found`);
+    const depositData = depositRows[0];
+
+    // 2. Delete the deposit from the deposits table
+    const [deleteResult]: any = await connection.query(
+      `DELETE FROM deposits WHERE deposit_id = ?`,
+      [depositId]
+    );
+
+    if (deleteResult.affectedRows === 0) {
+      throw new Error(`Failed to delete deposit with id ${depositId}`);
+    }
+
+    // 3. Update associated case (decrement has_deposit count)
+    await connection.query(
+      `UPDATE cases 
+       SET has_deposit = GREATEST(0, IFNULL(has_deposit, 0) - 1),
+           update_at = NOW()
+       WHERE case_id = ?`,
+      [depositData.case_id]
+    );
+
+    await connection.commit();
+
+    return {
+      message: `Deposit with id ${depositId} deleted successfully`,
+      deleted_deposit: depositData,
+    };
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+};
+
+// Get deposit by Case ID
+export const getDepositsByCaseIdRepository = async (caseId: number) =>{
+  const connection = await db.getConnection();
+  try{
+    const [rows]: any = await connection.query(
+      `
+      SELECT d.*, u.name as username
+      FROM deposits d
+      LEFT JOIN user u ON d.user_id = u.id
+      WHERE d.case_id = ?
+      ORDER BY d.deposit_at DESC
+      `,[caseId]
+    );
+    return rows;
+  } finally {
+    connection.release();
+  }
+};
+
+// Get deposit by User ID
+export const getDepositsByUserIdRepository = async (userId: string) => {
+  const connection = await db.getConnection();
+
+  try {
+    const [rows]: any = await connection.query(
+      `SELECT d.*, c.case_status, c.case_description
+       FROM deposits d
+       LEFT JOIN cases c ON d.case_id = c.case_id
+       WHERE d.user_id = ?
+       ORDER BY d.deposit_at DESC`,
+      [userId]  // Using userId as string in the query
+    );
+    return rows;
+  } finally {
+    connection.release();
+  }
+};

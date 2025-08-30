@@ -6,6 +6,9 @@ import { CallLogDetail, ContactCreate, ContactWithDetails, UsernameWithDetails }
 import fs from "fs";
 import { parse } from "csv-parse";
 
+// -----------------------
+// Get All
+// -----------------------
 export const getAllContactsService = async (
   page: number = 1,
   limit: number = 10,
@@ -50,6 +53,9 @@ export const getAllContactsService = async (
   }
 };
 
+// -----------------------
+// Detail
+// -----------------------
 export const getContactDetailService = async (contactId: number) => {
   const rows = await getContactDetailByIdRepository(contactId);
 
@@ -148,6 +154,9 @@ export const getContactDetailService = async (contactId: number) => {
 //   return result;
 // };
 
+// -----------------------
+// Create
+// -----------------------
 export const createContactService = async (contact: ContactCreate) => {
   const newContactId = await createContactRepository(contact);
 
@@ -156,15 +165,24 @@ export const createContactService = async (contact: ContactCreate) => {
   };
 };
 
+// -----------------------
+// Update
+// -----------------------
 export const updateContactService = async (id: number, contact: Partial<ContactCreate>) =>{
   const now = new Date();
   return updateContactRepository(id, {...contact, update_at: now});
 }
 
+// -----------------------
+// Delete
+// -----------------------
 export const deleteContactService = async (id: number) =>{
   return deleteContactRepository(id);
 }
 
+// -----------------------
+// upload file csv
+// -----------------------
 export const uploadContactsCsvService = async (filePath: string) => {
   const contacts: ContactCreate[] = [];
   const parser = fs.createReadStream(filePath).pipe(parse({ columns: true, skip_empty_lines: true }));

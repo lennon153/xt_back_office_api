@@ -5,7 +5,9 @@ import { createUsernameSchema, updateUsernameSchema } from "../validators/userna
 import { HttpStatus } from "../constants/httpStatus";
 import { ZodError } from "zod";
 
-
+// -----------------------
+// Create
+// -----------------------
 export const createUsernameController = async (
   req: Request,
   res: Response<ApiResponse<any>>
@@ -54,7 +56,9 @@ export const createUsernameController = async (
   }
 };
 
-
+// -----------------------
+// Get All
+// -----------------------
 export const getAllUsernameController = async (
     req: Request,
     res:Response<ApiResponse<any>>,
@@ -88,7 +92,9 @@ export const getAllUsernameController = async (
     }
 }
 
+// -----------------------
 // Update
+// -----------------------
 export const updateUsernameController = async (
   req: Request,
   res: Response<ApiResponse<any>>
@@ -156,8 +162,13 @@ export const updateUsernameController = async (
 };
 
 
+// -----------------------
 // Get by ID
-export const getUsernameByIdController = async (req: Request, res: Response<ApiResponse<any>>) => {
+// -----------------------
+export const getUsernameByIdController = async (
+  req: Request, 
+  res: Response<ApiResponse<any>>
+) => {
   try {
     const id = Number(req.params.id);
     const username = await getUsernameByIdService(id);
@@ -172,7 +183,9 @@ export const getUsernameByIdController = async (req: Request, res: Response<ApiR
   }
 };
 
+// -----------------------
 // Delete
+// -----------------------
 export const deleteUsernameController = async (
   req: Request,
   res: Response<ApiResponse<any>>

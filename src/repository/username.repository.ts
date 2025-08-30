@@ -4,7 +4,9 @@ import { UsernameUpdate } from "../types/username";
 import { CreateUsername, Username } from "../types/username.type";
 import { paginate } from "../utils/pagination";
 
-
+// -----------------------
+// Create
+// -----------------------
 export const createUsernameRepository = async (
   newUsername: Omit<CreateUsername, "register_date" | "last_deposit"> & {
     register_date?: Date;
@@ -84,7 +86,9 @@ export const createUsernameRepository = async (
   }
 };
 
-
+// -----------------------
+// Get all
+// -----------------------
 export async function getAllUsernameRepository(
     options: PaginateOptions
 ): Promise<PaginationResult<Username>> {    
@@ -95,7 +99,9 @@ export async function getAllUsernameRepository(
 }
 
 
-// repositories/username.repository.ts
+// -----------------------
+// Update
+// -----------------------
 export const updateUsernameRepository = async (
   id: number,
   data: Partial<UsernameUpdate>
@@ -153,7 +159,9 @@ export const updateUsernameRepository = async (
   }
 };
 
-
+// -----------------------
+// Get by Id
+// -----------------------
 export const getUsernameByIdRepository = async (id: number) => {
     const [rows]: any = await db.query(
         `SELECT * FROM usernames WHERE username_id = ?`,
@@ -162,6 +170,9 @@ export const getUsernameByIdRepository = async (id: number) => {
     return rows[0] || null;
 }
 
+// -----------------------
+// Delete
+// -----------------------
 export const deleteUsernameRepository = async (id: number): Promise<number> => {
   const [result]: any = await db.query(
     `DELETE FROM usernames WHERE username_id = ?`,

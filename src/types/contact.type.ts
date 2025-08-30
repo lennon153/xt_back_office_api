@@ -23,26 +23,28 @@ export interface Contact{
   delete_at: Date | null;
 }
 
+export type LastCallStatus =
+  | "success"
+  | "no_answer"
+  | "connected_declined"
+  | "callback"
+  | "wrong_number"
+  | "blocked";
+  
 // For creating new contacts where some fields are optional
-export interface ContactCreate {
-  tel?: string | null | undefined;
-  full_name?: string | null | undefined;
-  contact_type?: "lead" | "customer" | null | undefined;
-  register_date?: Date | null;
+export type ContactCreate = {
+  tel: string | null | undefined;
+  full_name: string | null | undefined;
+  contact_type?: "lead" | "customer" | undefined;
+  register_date: Date | null | undefined;
   last_call_at: Date;
-  last_call_status:
-  | 'no_answer' 
-  | 'connected_declined' 
-  | 'callback'
-  | 'wrong_number' 
-  | 'blocked' 
-  | 'success';
-  personal_note: string | null;
-  contact_line: string | null;
+  last_call_status: LastCallStatus;
+  personal_note: string | null | undefined;
+  contact_line: string | null | undefined;
   create_at: Date;
-  update_at: Date | null
-  dob : Date | null;
-}
+  update_at: Date | null | undefined;
+  dob: Date | null | undefined;
+};
 
 // For updating contacts where most fields are optional
 export interface ContactUpdate {

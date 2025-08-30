@@ -2,7 +2,7 @@ import { PoolConnection, ResultSetHeader } from "mysql2";
 import {db} from "../configs/db";
 import { ContactCreate } from "../types/contact.type";
 
-
+// Get all
 export const getAllContactsRepository = async (
   page: number = 1,
   limit: number = 10,
@@ -38,6 +38,7 @@ export const getAllContactsRepository = async (
   return { rows, total, page, limit };
 };
 
+// Get Detail
 export const getContactDetailByIdRepository = async (contactId: number) => {
   const [rows]: any = await db.query(
     `
@@ -111,6 +112,7 @@ export const getContactDetailByIdRepository = async (contactId: number) => {
   return rows;
 };
 
+// Create 
 export const createContactRepository = async (contact: ContactCreate) => {
   const connection = await db.getConnection();
   await connection.beginTransaction();
@@ -259,9 +261,13 @@ export const createContactRepository = async (contact: ContactCreate) => {
 //   }
 // };
 
-// UPDATE
 
-export const updateContactRepository = async (id: number, contact: Partial<ContactCreate>) => {
+
+// UPDATE
+export const updateContactRepository = async (
+  id: number, 
+  contact: Partial<ContactCreate>
+) => {
   const fields = Object.keys(contact);
   if (fields.length === 0) return null;
 

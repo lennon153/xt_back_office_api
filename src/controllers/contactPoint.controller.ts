@@ -4,7 +4,9 @@ import { createContactPointService, deleteContactPointService, getAllContactPoin
 import { ApiResponse } from "../types/api.type";
 import { ContactPointUpdate, contactPointUpdateSchema, createContactPointSchema } from "../validators/contactPoint.schema";
 
-
+// -----------------------
+// Create
+// -----------------------
 export const createContactPointController = async (
   req: Request,
   res: Response<ApiResponse>,
@@ -67,7 +69,9 @@ export const createContactPointController = async (
   }
 };
 
-
+// -----------------------
+// Get All
+// -----------------------
 export const getAllContactPointController = async (
   req: Request,
   res: Response<ApiResponse<any>>,

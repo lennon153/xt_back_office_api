@@ -155,6 +155,9 @@ export const deleteContactPointRepository = async (pointId: number) => {
   };
 }
 
+// -----------------------
+// Get By Id
+// -----------------------
 export const getContactPointByIdRepository = async (contact_id: number) => {
   const [rows]: any = await db.query(
     `SELECT * FROM contact_points WHERE contact_id = ?`,

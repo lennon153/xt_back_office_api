@@ -1,9 +1,14 @@
-// src/controllers/upload.controller.ts
 import { Request, Response } from "express";
 import { ApiResponse } from "../types/api.type";
 import { uploadCSVService } from "../services/contact.csv.service";
 
-export const uploadCSVController = async (req: Request, res: Response) => {
+// -----------------------
+// Upload file csv
+// -----------------------
+export const uploadCSVController = async (
+  req: Request, 
+  res: Response
+) => {
   const response: ApiResponse = { success: false, message: "", data: null };
 
   try {

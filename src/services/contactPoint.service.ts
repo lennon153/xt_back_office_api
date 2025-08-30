@@ -7,10 +7,17 @@ import { AppError } from "../utils/customError";
 import { formatDateHour } from "../utils/dateFormat";
 import {  CreateContactPointInput } from "../validators/contactPoint.schema";
 
+
+// -----------------------
+// Create
+// -----------------------
 export const createContactPointService = async (input: CreateContactPointInput) => {
   return await createContactPointRepository(input);
 };
 
+// -----------------------
+// Get All
+// -----------------------
 export async function getAllContactPointService(
   options: PaginateOptions
 ): Promise<PaginationResult<ContactPointResponse>>{
@@ -77,7 +84,9 @@ export const deleteContactPointService = async (PointId: number) => {
   return result;
 };
 
-// Get service
+// -----------------------
+// Get by ID
+// -----------------------
 export const getContactPointByIdService = async (PointId: number) => {
   const contactPoint = await getContactPointByIdRepository(PointId);
   return contactPoint;

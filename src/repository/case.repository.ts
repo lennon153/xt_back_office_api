@@ -4,6 +4,7 @@ import { PaginateOptions, PaginationResult } from "../types/pagination.type";
 import { paginate } from "../utils/pagination";
 import { CreateCaseAssInput } from "../validators/case.schema";
 
+// Create
 export const createCaseRepository = async (newCase: CreateCase) => {
   const [result]: any = await db.query(
     `INSERT INTO cases 
@@ -27,8 +28,7 @@ export const createCaseRepository = async (newCase: CreateCase) => {
   };
 };
 
-
-
+// Get all
 export async function getCasesRepository(
   options: PaginateOptions
 ): Promise<PaginationResult<Case>> {

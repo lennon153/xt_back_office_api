@@ -25,7 +25,11 @@ export const ContactCreateSchema = z.object({
 }).transform((data) => ({
   ...data,
   contact_type: data.contact_type ?? undefined, // Convert null to undefined
+  register_date: data.register_date ?? null,    // Convert undefined → null
+  update_at: data.update_at ?? null,           // Convert undefined → null
+  dob: data.dob ?? null,                       // Convert undefined → null
 }));
+
 
 /** Inferred TS type after Zod transforms */
 export type ContactCreateInput = z.infer<typeof ContactCreateSchema>;

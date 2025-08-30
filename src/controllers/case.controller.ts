@@ -5,8 +5,14 @@ import { createCaseAssSchema, createCaseSchema, updateCaseSchema } from "../vali
 import { ZodError } from "zod";
 import { HttpStatus } from "../constants/httpStatus";
 
-
-export const createCaseController = async (req: Request, res: Response, next: NextFunction) => {
+// -----------------------
+// Create
+// -----------------------
+export const createCaseController = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+) => {
   try {
     const parsed = createCaseSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -29,7 +35,9 @@ export const createCaseController = async (req: Request, res: Response, next: Ne
   }
 };
 
-
+// -----------------------
+// Get All
+// -----------------------
 export const getAllCasesController = async (
   req: Request,
   res: Response<ApiResponse<any>>,
@@ -69,6 +77,9 @@ export const getAllCasesController = async (
   }
 };
 
+// -----------------------
+// Update
+// -----------------------
 export const updateCaseController = async (
   req: Request<{ id: string }>,
   res: Response<ApiResponse<any>>,
@@ -105,8 +116,14 @@ export const updateCaseController = async (
   }
 };
 
-// Delete case
-export const deleteCaseController = async (req: Request<{ id: string }>, res: Response<ApiResponse<any>>, next: NextFunction) => {
+// -----------------------
+// Delete
+// -----------------------
+export const deleteCaseController = async (
+  req: Request<{ id: string }>, 
+  res: Response<ApiResponse<any>>, 
+  next: NextFunction
+) => {
   try {
     const caseId = Number(req.params.id);
     if (isNaN(caseId) || caseId <= 0) {
@@ -121,7 +138,9 @@ export const deleteCaseController = async (req: Request<{ id: string }>, res: Re
   }
 };
 
-
+// -----------------------
+// Create with assigned
+// -----------------------
 export const createCaseAssController = async (
   req: Request,
   res: Response<ApiResponse>,
@@ -166,7 +185,14 @@ export const createCaseAssController = async (
   }
 };
 
-export const getCaseByIdController = async(req:Request, res:Response<ApiResponse<any>>, next: NextFunction)=>{
+// -----------------------
+// Get By ID
+// -----------------------
+export const getCaseByIdController = async(
+  req:Request, 
+  res:Response<ApiResponse<any>>, 
+  next: NextFunction
+)=>{
   try{
     const id = Number(req.params.id);
     const cases = await getCaseByIdService(id);

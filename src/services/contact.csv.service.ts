@@ -23,6 +23,9 @@ const callStatusMap: Record<string, CallLog["call_status"]> = {
     "Transfer": "success",
 };
 
+// -----------------------
+// Upload csv
+// -----------------------
 export const uploadCSVService = async (filePath: string) => {
     const fileContent = fs.readFileSync(filePath, "utf8");
     const errors: { row: number; message: string }[] = [];

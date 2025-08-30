@@ -4,7 +4,9 @@ import { UsernameUpdate } from "../types/username";
 import { CreateUsername, UsernameResponse } from "../types/username.type";
 import { formatDateHour } from "../utils/dateFormat";
 
-
+// -----------------------
+// Create
+// -----------------------
 export const createUsernameService = async (data: CreateUsername) => {
   const insertedId = await createUsernameRepository(data);
 
@@ -14,6 +16,9 @@ export const createUsernameService = async (data: CreateUsername) => {
   };
 };
 
+// -----------------------
+// Get All
+// -----------------------
 export async function getAllUsernameService(
     options: PaginateOptions
 ): Promise<PaginationResult<UsernameResponse>> {
@@ -32,6 +37,9 @@ export async function getAllUsernameService(
     };
 }
 
+// -----------------------
+// Update
+// -----------------------
 export const updateUsernameService = async (id: number, data: UsernameUpdate) => {
   const affectedRows = await updateUsernameRepository(id, data);
 
@@ -40,7 +48,9 @@ export const updateUsernameService = async (id: number, data: UsernameUpdate) =>
   return await getUsernameByIdRepository(id); // return updated object
 };
 
-
+// -----------------------
+// Get By ID
+// -----------------------
 export const getUsernameByIdService = async (id: number) => {
   const username = await getUsernameByIdRepository(id);
   if (username) {
@@ -50,6 +60,9 @@ export const getUsernameByIdService = async (id: number) => {
   return username;
 };
 
+// -----------------------
+// Delete
+// -----------------------
 export const deleteUsernameService = async (id: number): Promise<number> => {
   return await deleteUsernameRepository(id); // now returns number
 };

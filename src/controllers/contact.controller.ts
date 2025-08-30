@@ -1,10 +1,15 @@
 import { Request, Response, NextFunction } from "express";
 import {  createContactService, deleteContactService, getAllContactsService, getContactDetailService, updateContactService, uploadContactsCsvService } from "../services/contact.service";
 import { ApiResponse } from "../types/api.type";
-import {  ContactCreate, ContactWithDetails, PaginatedContacts } from "../types/contact.type";
+import {  ContactCreate, ContactWithDetails } from "../types/contact.type";
 import { ContactCreateSchema } from "../validators/contact.schema";
 import { HttpStatus } from "../constants/httpStatus";
+import z, { ZodError } from "zod";
 
+
+// -----------------------
+// Get All
+// -----------------------
 export const getAllContactsController = async (
   req: Request<{}, {}, {}, { page?: string; limit?: string; startDate?: string; endDate?: string }>,
   res: Response<ApiResponse<any>>,
@@ -78,7 +83,9 @@ export const getAllContactsController = async (
   }
 };
 
-
+// -----------------------
+// Get Detail
+// -----------------------
 export const getContactDetailController = async (
   req: Request<{ contactId: string }>,
   res: Response<ApiResponse<ContactWithDetails>>,
@@ -132,40 +139,20 @@ export const getContactDetailController = async (
 //   }
 // }
 
+// -----------------------
+// Create
+// -----------------------
 export const createContactController = async (
   req: Request,
-  res: Response<ApiResponse>,
+  res: Response<ApiResponse<any>>,
   next: NextFunction
 ) => {
   try {
-    // Validate with Zod
-    const parsed = ContactCreateSchema.safeParse(req.body);
+    // Validate and transform input with Zod
+    const parsed = ContactCreateSchema.parse(req.body);
 
-    if (!parsed.success) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
-    }
-
-    // Normalize optional fields to match ContactCreate
-    const contactData: ContactCreate = {
-      tel: parsed.data.tel ?? null,
-      full_name: parsed.data.full_name ?? null,
-      contact_type: parsed.data.contact_type ?? "lead",
-      register_date: parsed.data.register_date ?? null,
-      last_call_at: parsed.data.last_call_at,
-      last_call_status: parsed.data.last_call_status,
-      personal_note: parsed.data.personal_note ?? null,
-      contact_line: parsed.data.contact_line ?? null,
-      create_at: parsed.data.create_at,
-      update_at: parsed.data.update_at ?? null,
-      dob: parsed.data.dob ?? null,
-    };
-
-    // Call service
-    const newContact = await createContactService(contactData);
+    // Call service to create contact
+    const newContact = await createContactService(parsed);
 
     return res.status(201).json({
       success: true,
@@ -173,13 +160,34 @@ export const createContactController = async (
       data: newContact,
     });
   } catch (err: any) {
+    // Handle Zod validation errors
+    if (err instanceof ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: err.issues[0]?.message || "Validation failed",
+        errors: err.issues.map(issue => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      });
+    }
+
+    console.error("Unexpected error:", err);
     return res.status(500).json({
       success: false,
       message: err.message || "Internal server error",
     });
   }
 };
-export const updateContactController = async (req:Request<{id: string}>,res: Response<ApiResponse<any>>, next: NextFunction) =>{
+
+// -----------------------
+// Update
+// -----------------------
+export const updateContactController = async (
+  req:Request<{id: string}>,
+  res: Response<ApiResponse<any>>, 
+  next: NextFunction
+) =>{
   try{
     const id = Number(req.params.id);
     if(isNaN(id) || id <= 0) return res.status(HttpStatus.BAD_REQUEST).json({success: false, message:"Invalid contact ID"});
@@ -197,8 +205,14 @@ export const updateContactController = async (req:Request<{id: string}>,res: Res
   }
 }
 
-export const deleteContactController = async(req: Request, res:Response<ApiResponse<any>>, next: NextFunction) =>{
-
+// -----------------------
+// Delete
+// -----------------------
+export const deleteContactController = async(
+  req: Request, 
+  res:Response<ApiResponse<any>>, 
+  next: NextFunction
+) =>{
   try{
     const id = Number(req.params.id);
     if(isNaN(id) || id<= 0) return res.status(HttpStatus.BAD_REQUEST).json({success: false, message:"Invalid contact ID"});
@@ -213,28 +227,64 @@ export const deleteContactController = async(req: Request, res:Response<ApiRespo
 
 } 
 
-export interface MulterRequest extends Request {
-  file?: Express.Multer.File; // ✅ make optional
-}
+interface MulterFile extends Express.Multer.File {}
 
+const uploadCsvTsvSchema = z.object({
+  file: z
+    .object({
+      path: z.string(),
+      originalname: z.string(),
+      mimetype: z.string(),
+    })
+    .refine(
+      file =>
+        file.mimetype === "text/csv" ||
+        file.mimetype === "text/tab-separated-values" ||
+        file.originalname.endsWith(".csv") ||
+        file.originalname.endsWith(".tsv"),
+      { message: "Only CSV or TSV files are allowed" }
+    ),
+});
+
+// -----------------------
+// Upload file csv
+// -----------------------
 export const uploadContactsCsvController = async (
   req: Request,
   res: Response<ApiResponse<any>>,
   next: NextFunction
 ) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: "CSV file is required" });
+    const multerReq = req as Request & { file?: MulterFile };
+
+    if (!multerReq.file) {
+      return res.status(400).json({
+        success: false,
+        message: "CSV/TSV file is required",
+      });
     }
 
-    const createdContacts = await uploadContactsCsvService(req.file.path);
+    // Validate file using Zod
+    const parsed = uploadCsvTsvSchema.parse({ file: multerReq.file });
+
+    const createdContacts = await uploadContactsCsvService(parsed.file.path);
 
     return res.json({
       success: true,
       message: `Successfully uploaded ${createdContacts.length} contacts`,
       data: createdContacts,
     });
-  } catch (err) {
+  } catch (err: any) {
+    if (err instanceof ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: err.issues.map(i => i.message).join(", "),
+        errors: err.issues.map(i => ({
+          path: i.path.join("."),
+          message: i.message,
+        })),
+      });
+    }
     next(err);
   }
 };
