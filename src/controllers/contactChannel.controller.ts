@@ -3,37 +3,46 @@ import { ApiResponse } from "../types/api.type";
 import { contactChannelSchema, updateContactChannelSchema } from "../validators/contactChannelSchema";
 import { HttpStatus } from "../constants/httpStatus";
 import { createContactChannelService, deleteContactChannelService, getAllContactChannelsService, getContactChannelByCodeService, updateContactChannelService } from "../services/contactChannelService.service";
+import { ZodError } from "zod";
 
 // Create
+
 export const createContactChannelController = async (
-    req: Request,
-    res:Response<ApiResponse<any>>,
-    next: NextFunction
-) =>{
-    try{
-        const parsed = contactChannelSchema.parse(req.body);
-        const created = await createContactChannelService(parsed);
+  req: Request,
+  res: Response<ApiResponse<any>>,
+  next: NextFunction
+) => {
+  try {
+    const parsed = contactChannelSchema.parse(req.body);
+    const created = await createContactChannelService(parsed);
 
-        return res.json({
-            success: true,
-            message: "Contact channel created successfully",
-            data: created,
-        })
-    }catch(err: any){
-
-    if (err.errors) {
-      return res.status(400).json({ success: false, message: err.errors[0].message });
+    return res.json({
+      success: true,
+      message: "Contact channel created successfully",
+      data: created,
+    });
+  } catch (err: any) {
+    // ✅ Zod validation errors
+    if (err instanceof ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: err.issues.map(issue => issue.message).join(", "),
+        errors: err.issues.map(issue => ({
+          path: issue.path.join("."),
+          message: issue.message
+        }))
+      });
     }
 
+    // Duplicate channel code
     if (err.message === "Channel code already exists") {
       return res.status(409).json({ success: false, message: err.message });
     }
 
     console.error("Unexpected error:", err);
     return res.status(500).json({ success: false, message: "Internal server error" });
-    }
-}
-
+  }
+};
 // Gat all
 export const getAllContactChannelsController = async (
   req: Request,
