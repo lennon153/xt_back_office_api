@@ -5,6 +5,7 @@ import { corsConfig } from "./middlewares/corsConfig";
 import { rateLimiter } from "./middlewares/rateLimiter";
 import routes from "./routes/index.route";
 import { dailyRotationTask } from "./utils/case/helper.v4";
+import { formatDateHour } from "./utils/dateFormat";
 const app = express();
 
 
@@ -22,6 +23,11 @@ app.use(requestLogger);
 // 👇 apply global prefix ONCE
 const API_PREFIX = process.env.API_PREFIX || '/api/v1';
 app.use(API_PREFIX, routes);
+
+// Health check
+app.get('/api/v1/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: formatDateHour(new Date())});
+});
 
 // Auto check functions
 dailyRotationTask
