@@ -229,7 +229,7 @@ export const deleteCallLogRepository = async (callId: number) => {
       throw new AppError("Call log not found", HttpStatus.NOT_FOUND);
     }
 
-    return { message: "Call log deleted successfully" };
+    return 
   } finally {
     connection.release();
   }
