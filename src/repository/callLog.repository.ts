@@ -7,7 +7,7 @@ import { CallLogCreate } from "../types/callLog.type";
 // Create
 // -----------------------
 export const createCallLogRepository = async (
-  newCallLog: Omit<CallLogCreate, "staff_id">,
+  newCallLog: Omit<CallLogCreate, "user_id">,
   staffId: string
 ) => {
   const connection = await db.getConnection();
@@ -35,7 +35,7 @@ export const createCallLogRepository = async (
     // 3️⃣ Insert log
     const [result]: any = await connection.query(
       `INSERT INTO call_logs
-        (contact_id, point_id, staff_id, call_status, call_note, call_start_at, call_end_at, next_action_at)
+        (contact_id, point_id, user_id, call_status, call_note, call_start_at, call_end_at, next_action_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newCallLog.contact_id,
@@ -53,7 +53,7 @@ export const createCallLogRepository = async (
 
     return {
       call_id: result.insertId,
-      staff_id: staffId,
+      user_id: staffId,
       ...newCallLog,
     };
   } catch (err) {

@@ -2,7 +2,7 @@ export interface CallLog{
     call_id: number;
     contact_id: number;
     point_id: number;
-    staff_id: string; 
+    user_id: string; 
     call_status: string;
     call_note: string;
     call_start_at:Date;
@@ -13,7 +13,7 @@ export interface CallLog{
 export interface CallLogCreate{
     contact_id: number;
     point_id: number;
-    staff_id: string; 
+    user_id: string; 
     call_status: string;
     call_note: string;
     call_start_at:Date;
