@@ -1,8 +1,6 @@
 import { db } from "../configs/db";
 import { CallLog, Contact, Username } from "../types/contact.csv.type";
 
-
-// upload file csv 
 /**
  * Save a contact, its call log, and username in a single transaction.
  * @param contact Contact data
@@ -49,9 +47,9 @@ export const saveAll = async (
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
         contactId,
-        callLog.point_id ?? null, // set null if undefined
-        callLog.user_id ?? null,
-        callLog.call_status,
+        1, // set null if undefined
+        'YUYgP6NjGXGmBvnlv9XSbozJp1gkA6mG',
+        'success',
         callLog.call_note ?? '',
         callLog.call_start_at ?? new Date(),
         callLog.call_end_at ?? new Date(),
@@ -68,8 +66,8 @@ export const saveAll = async (
         contactId,
         username.platform_id ?? null,
         username.username,
-        username.username_status ?? '',
-        username.life_cycle ?? '',
+        'active',
+        'CRM',
         username.has_deposited ?? 0,
         username.last_deposit ?? new Date(),
         username.vip_level ?? 0

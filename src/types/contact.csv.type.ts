@@ -10,13 +10,13 @@ export interface Contact {
     create_at: Date;
     updated_at: Date;
     deleted_at: Date | null;
-    dob: Date;
+    dob: Date| null;
 }
 
 export interface CallLog {
     contact_id: number;
     point_id: number | null; // nullable
-    user_id: number | null;
+    user_id: string | null;
     call_status: 'no_answer' | 'connected_declined' | 'callback' | 'wrong_number' | 'blocked' | 'success';
     call_note: string;
     call_start_at: Date;
@@ -31,6 +31,6 @@ export interface Username {
     username_status: string;
     life_cycle: string;
     has_deposited: number;
-    last_deposit: Date;
+    last_deposit: Date| null;
     vip_level: number;
 }

@@ -17,7 +17,7 @@ export const contactSchema = z.object({
 export const callLogSchema = z.object({
     contact_id: z.number(),
     point_id: z.number().nullable(), // allow null
-    user_id: z.number().nullable(),
+    user_id: z.string().nullable(),
     call_status: z.enum(['no_answer','connected_declined','callback','wrong_number','blocked','success']),
     call_note: z.string(),
     call_start_at: z.date(),
