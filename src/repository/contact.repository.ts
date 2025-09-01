@@ -54,6 +54,7 @@ export const getContactDetailByIdRepository = async (contactId: number) => {
 
       p.platform_id,
       p.platform_name,
+      
       pt.type_id,
       pt.type_name,
 

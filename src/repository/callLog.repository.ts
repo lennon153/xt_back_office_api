@@ -63,3 +63,174 @@ export const createCallLogRepository = async (
     connection.release();
   }
 };
+
+// -----------------------
+//  Get All
+// -----------------------
+export const getAllCallLogRepository = async (
+  page: number = 1,
+  limit: number = 20,
+  search: string = ""
+) => {
+  const offset = (page - 1) * limit;
+
+  const connection = await db.getConnection();
+  try {
+    let whereClause = "";
+    let params: any[] = [];
+
+    if (search && search.trim() !== "") {
+      whereClause = `
+        WHERE cl.call_status LIKE ?
+        OR cl.call_note LIKE ?
+        OR u.full_name LIKE ?
+      `;
+      const likeSearch = `%${search}%`;
+      params.push(likeSearch, likeSearch, likeSearch);
+    }
+
+    // total count
+    const [countRows]: any = await connection.query(
+      `
+        SELECT COUNT(*) as total
+        FROM call_logs cl
+        LEFT JOIN user u ON cl.user_id = u.id
+        ${whereClause}
+      `,
+      params
+    );
+
+    const total = countRows[0].total;
+
+    // fetch rows
+    const [rows]: any = await connection.query(
+      `
+        SELECT cl.call_id, cl.contact_id, cl.point_id, cl.user_id, cl.call_status,
+               cl.call_note, cl.call_start_at, cl.call_end_at, cl.next_action_at,
+               u.name as staff_name
+        FROM call_logs cl
+        LEFT JOIN user u ON cl.user_id = u.id
+        ${whereClause}
+        ORDER BY cl.call_start_at DESC
+        LIMIT ? OFFSET ?
+      `,
+      [...params, limit, offset]
+    );
+
+    return {
+      data: rows,
+      pagination: {
+        total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+        limit,
+        hasNext: page * limit < total,
+        hasPrevious: page > 1,
+      },
+    };
+  } finally {
+    connection.release();
+  }
+};
+
+//------------------------------
+// Get By ID
+// -------------------------------
+export const getCallLogByIdRepository = async (callId: number) => {
+  const connection = await db.getConnection();
+  try {
+    const [rows]: any = await connection.query(
+      `
+        SELECT cl.call_id, cl.contact_id, cl.point_id, cl.user_id, cl.call_status,
+               cl.call_note, cl.call_start_at, cl.call_end_at, cl.next_action_at,
+               u.name as staff_name
+        FROM call_logs cl
+        LEFT JOIN user u ON cl.user_id = u.id
+        WHERE cl.call_id = ?
+      `,
+      [callId]
+    );
+    console.log(callId)
+
+    if (rows.length === 0) {
+      throw new AppError("Call log not found", HttpStatus.NOT_FOUND);
+    }
+
+    return rows[0];
+  } finally {
+    connection.release();
+  }
+};
+
+// -------------------------------
+// Update
+// -------------------------------
+export const updateCallLogRepository = async (
+  callId: number,
+  updatedCall: Partial<{
+    call_status: string;
+    call_note: string;
+    call_start_at: string | Date;
+    call_end_at: string | Date;
+    next_action_at: string | Date;
+  }>
+) => {
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  for (const key in updatedCall) {
+    const value = updatedCall[key as keyof typeof updatedCall];
+    if (value !== undefined) {
+      fields.push(`${key} = ?`);
+      values.push(value);
+    }
+  }
+
+  if (fields.length === 0) {
+    throw new AppError("No fields provided to update", HttpStatus.BAD_REQUEST);
+  }
+
+  const [result]: any = await db.query(
+    `UPDATE call_logs SET ${fields.join(", ")} WHERE call_id = ?`,
+    [...values, callId]
+  );
+
+  if (result.affectedRows === 0) {
+    throw new AppError("Call log not found", HttpStatus.NOT_FOUND);
+  }
+
+  // Return updated object
+  const [updatedRows]: any = await db.query(
+    `
+      SELECT cl.call_id, cl.contact_id, cl.point_id, cl.user_id, cl.call_status,
+             cl.call_note, cl.call_start_at, cl.call_end_at, cl.next_action_at,
+             u.name as staff_name
+      FROM call_logs cl
+      LEFT JOIN user u ON cl.user_id = u.id
+      WHERE cl.call_id = ?
+    `,
+    [callId]
+  );
+
+  return updatedRows[0];
+};
+// -------------------------------
+// Delete
+// -------------------------------
+export const deleteCallLogRepository = async (callId: number) => {
+  const connection = await db.getConnection();
+  try {
+    const [result]: any = await connection.query(
+      "DELETE FROM call_logs WHERE call_id = ?",
+      [callId]
+    );
+
+    if (result.affectedRows === 0) {
+      throw new AppError("Call log not found", HttpStatus.NOT_FOUND);
+    }
+
+    return { message: "Call log deleted successfully" };
+  } finally {
+    connection.release();
+  }
+};

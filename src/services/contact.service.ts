@@ -125,7 +125,6 @@ export const getContactDetailService = async (contactId: number) => {
         next_action_at: row.next_action_at ? formatDateHour(new Date(row.next_action_at)) : null,
         channel_code: row.cp_channel_code,
         channel_name: row.channel_name ?? "",
-  
       });
     }
   });
@@ -133,26 +132,6 @@ export const getContactDetailService = async (contactId: number) => {
 
   return contact;
 };
-
-
-
-// export const createContactWithCaseAndDepositService = async (
-//   contactData: Omit<ContactCreate, "create_at" | "update_at">
-// ) => {
-//   const now = new Date();
-
-//   // Add timestamps
-//   const contactPayload: ContactCreate = {
-//     ...contactData,
-//     create_at: now,
-//     update_at: now,
-//   };
-
-//   // Call repository to handle contact → case → deposit
-//   const result = await createContactCaseAndDepositRepository(contactPayload);
-
-//   return result;
-// };
 
 // -----------------------
 // Create
