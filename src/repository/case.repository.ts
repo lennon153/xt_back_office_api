@@ -1,5 +1,5 @@
 import { db } from "../configs/db";
-import { Case, CaseAssignment, CreateCase, UpdateCase } from "../types/case.type";
+import { Case, CreateCase, UpdateCase } from "../types/case.type";
 import { PaginateOptions, PaginationResult } from "../types/pagination.type";
 import { paginate } from "../utils/pagination";
 import { CreateCaseAssInput } from "../validators/case.schema";
@@ -76,7 +76,7 @@ export const deleteCaseRepository = async (caseId: number)=>{
     return result;
 }
 
-// create case + assign user in one repository function
+// Create case + assign user in one repository function
 export const createAndAssignCaseRepository = async (
   input: CreateCaseAssInput
 ): Promise<{ caseId: number; caseData: any }> => {
@@ -147,6 +147,7 @@ export const createAndAssignCaseRepository = async (
   }
 };
 
+// Get by ID
 export const getCaseByIdRepository = async (id: number) =>{
   const [rows]: any = await db.query(
     `SELECT * FROM cases WHERE case_id = ?`,

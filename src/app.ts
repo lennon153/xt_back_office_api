@@ -4,7 +4,7 @@ import { requestLogger } from "./middlewares/requestLogger";
 import { corsConfig } from "./middlewares/corsConfig";
 import { rateLimiter } from "./middlewares/rateLimiter";
 import routes from "./routes/index.route";
-import { dailyRotationTask } from "./utils/case/helper.v3";
+import { dailyRotationTask } from "./utils/case/helper.v4";
 const app = express();
 
 
@@ -20,7 +20,8 @@ app.use(requestLogger);
 
 // Register API routes
 // 👇 apply global prefix ONCE
-app.use("/api/v1", routes);
+const API_PREFIX = process.env.API_PREFIX || '/api/v1';
+app.use(API_PREFIX, routes);
 
 // Auto check functions
 dailyRotationTask
