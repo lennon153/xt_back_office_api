@@ -10,7 +10,7 @@ const logFormat = printf(({ level, message, timestamp }) => {
 export const logger = winston.createLogger({
   level: "info", // default level
   format: combine(
-    colorize(), // adds colors to level (info, error, warn)
+    colorize({ all: true }), // adds colors to level (info, error, warn)
     timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
     logFormat
   ),

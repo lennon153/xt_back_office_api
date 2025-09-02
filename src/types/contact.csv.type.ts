@@ -6,6 +6,7 @@ export interface Contact {
     register_date: Date;
     last_call_at: Date;
     personal_note: string;
+    // last_call_status: string;
     contact_line: string;
     create_at: Date;
     updated_at: Date;

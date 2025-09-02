@@ -34,7 +34,7 @@ export const saveAll = async (
         contact.create_at ?? new Date(),
         contact.updated_at ?? new Date(),
         contact.deleted_at ?? null,
-        contact.dob ?? null
+        contact.dob
       ]
     );
 

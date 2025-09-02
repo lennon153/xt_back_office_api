@@ -40,16 +40,16 @@ export const createDepositAndAutoCaseRepository = async (data: CreateDepositInpu
     );
 
     // 4. Update current case
-    await connection.query(
-      `UPDATE cases
-       SET last_deposit = ?,
-           has_deposit = IFNULL(has_deposit, 0) + 1,
-           rotation_count = 0,
-           update_at = NOW(),
-           case_status = "closed"
-       WHERE case_id = ?`,
-      [depositAt, data.case_id]
-    );
+    // await connection.query(
+    //   `UPDATE cases
+    //    SET last_deposit = ?,
+    //        has_deposit = IFNULL(has_deposit, 0) + 1,
+    //        rotation_count = 0,
+    //        update_at = NOW(),
+    //        case_status = "closed"
+    //    WHERE case_id = ?`,
+    //   [depositAt, data.case_id]
+    // );
 
     // 5. Auto-create a new pending case for the same user
     const [newCaseResult]: any = await connection.query(

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {  createPlatformTypeController, deletePlatformTypeController, getAllPlatformsTypeController, getPlatformTypeByIdController, updatePlatformTypeController } from "../controllers/platformTyp.controller";
+import {  createPlatformTypeController, deletePlatformTypeController, getAllPlatformsTypeController, getPlatformTypeByIdController, updatePlatformTypeController } from "../controllers/platformType.controller";
 
 
 const platformTypeRoute = Router();

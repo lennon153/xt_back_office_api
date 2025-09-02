@@ -61,6 +61,7 @@ export const uploadCSVService = async (filePath: string) => {
                 const row = rows[i];
                 try {
                     // Parse contact data with proper null handling
+                    //FIXME:add last_call_status
                     const contact: Contact = {
                         tel: row["Phone"]?.trim() || null,
                         full_name: row["Fullname"]?.trim() || null,

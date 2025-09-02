@@ -3,7 +3,7 @@ import {Request,Response, NextFunction } from "express";
 import { SessionRequest } from "../middlewares/sessionAuth";
 import { createCallLogService, deleteCallLogService, getAllCallLogService, getCallLogByIdService, updateCallLogService } from "../services/callLog.service";
 import { ApiResponse } from "../types/api.type";
-import { HttpStatus } from "../constants/httpStatus";
+
 
 // -----------------------
 // Create
